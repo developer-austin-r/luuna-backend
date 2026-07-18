@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: luuna_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-luuna_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-luuna_pass}
+      POSTGRES_DB: ${DB_NAME:-luuna_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-luuna_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - luuna_network
+    restart: unless-stopped
+
+  # NestJS Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: luuna_app
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-luuna_db}
+      DB_USER: ${DB_USER:-luuna_user}
+      DB_PASSWORD: ${DB_PASSWORD:-luuna_pass}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/dist
+    networks:
+      - luuna_network
+    restart: unless-stopped
+    command: npm run start:dev
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  luuna_network:
+    driver: bridge
