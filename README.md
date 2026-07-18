@@ -1,98 +1,168 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Luuna Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Luuna Backend is a NestJS API built with TypeScript, Prisma, and PostgreSQL.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requirements
 
-## Description
+Use these versions for local development and CI parity:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Tool | Required version |
+| --- | --- |
+| Node.js | `24.4.1` |
+| npm | `11.5.2` or compatible with Node `24.4.1` |
+| PostgreSQL | `16` |
+| Prisma CLI / Client | `7.8.0` |
+| NestJS | `11.x` |
 
-## Project setup
+The Docker and CI setup currently use:
+
+- `node:24.4.1-alpine`
+- `postgres:16-alpine`
+
+## Environment
+
+Copy the example environment file:
 
 ```bash
-$ npm install
+cp .env.example .env
 ```
 
-## Compile and run the project
+The app uses individual database variables and builds the Prisma connection URL internally.
+
+```env
+NODE_ENV=development
+PORT=3000
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=luuna_db
+DB_USER=luuna_user
+DB_PASSWORD=luuna_pass
+DB_SCHEMA=public
+
+CORS_ORIGIN=*
+```
+
+For Docker Compose, the app container uses `DB_HOST=db` automatically.
+
+## Database
+
+Create the main database and the Prisma shadow database:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+sudo -u postgres psql -v ON_ERROR_STOP=1 \
+  -c "CREATE USER luuna_user WITH PASSWORD 'luuna_pass';" \
+  -c "CREATE DATABASE luuna_db OWNER luuna_user;" \
+  -c "CREATE DATABASE luuna_db_shadow OWNER luuna_user;" \
+  -c "GRANT ALL PRIVILEGES ON DATABASE luuna_db TO luuna_user;" \
+  -c "GRANT ALL PRIVILEGES ON DATABASE luuna_db_shadow TO luuna_user;"
 ```
 
-## Run tests
+The shadow database is used by Prisma when creating or validating migrations.
+
+## Setup
+
+Install dependencies:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm ci
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Generate the Prisma client:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run prisma:generate
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Run migrations:
 
-## Resources
+```bash
+npm run prisma:migrate:deploy
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+Start the development server:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+npm run start:dev
+```
 
-## Support
+The API runs at:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- API: `http://localhost:3000`
+- Swagger docs: `http://localhost:3000/api/docs`
+- Health check: `http://localhost:3000/health`
 
-## Stay in touch
+## Docker Setup
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Start PostgreSQL and the API together:
 
-## License
+```bash
+docker compose up --build
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This uses PostgreSQL `16-alpine` and creates the default database values from `.env`.
+
+Stop containers:
+
+```bash
+docker compose down
+```
+
+Remove the database volume as well:
+
+```bash
+docker compose down -v
+```
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run start` | Start the app once |
+| `npm run start:dev` | Start in watch mode |
+| `npm run build` | Build the NestJS app |
+| `npm run start:prod` | Run the built app from `dist/main` |
+| `npm run lint` | Run ESLint with auto-fix |
+| `npm run format` | Format source and test files |
+| `npm run test` | Run unit tests |
+| `npm run test:e2e` | Run e2e tests |
+| `npm run test:cov` | Run test coverage |
+| `npm run prisma:generate` | Generate Prisma client |
+| `npm run prisma:migrate` | Create and apply a development migration |
+| `npm run prisma:migrate:deploy` | Apply existing migrations |
+| `npm run prisma:studio` | Open Prisma Studio |
+| `npm run prisma:seed` | Run the Prisma seed script |
+
+## CI/CD
+
+The GitHub Actions workflow runs on `main` and `develop` pushes and pull requests.
+
+The CI job uses:
+
+- Node.js `24.4.1`
+- PostgreSQL `16-alpine`
+- `npm ci`
+- Prisma client generation
+- Prisma migrations
+- lint, build, unit tests, and e2e tests
+
+On push events, the build job publishes a Docker image to GitHub Container Registry.
+
+## Project Structure
+
+```text
+src/
+  common/          Shared constants, filters, and interceptors
+  config/          Database URL builder and env loader
+  modules/         Feature modules
+  prisma/          Prisma module and service
+prisma/
+  migrations/      Database migrations
+  schema.prisma    Prisma schema
+```
+
+## Notes
+
+- Prefer `DB_*` variables over hand-written `DATABASE_URL` values.
+- `DATABASE_URL` and `SHADOW_DATABASE_URL` are generated internally from `DB_*` values.
+- Use PostgreSQL `16` locally to match Docker and CI.
