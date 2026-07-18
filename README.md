@@ -45,6 +45,9 @@ CORS_ORIGIN=*
 
 For Docker Compose, the app container uses `DB_HOST=db` automatically.
 
+You do not need to add `DATABASE_URL` or `SHADOW_DATABASE_URL` to `.env`.
+Both values are generated from the `DB_*` variables.
+
 ## Database
 
 Create the main database and the Prisma shadow database:
@@ -59,6 +62,15 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 \
 ```
 
 The shadow database is used by Prisma when creating or validating migrations.
+It is configured in [prisma.config.ts](prisma.config.ts) with `shadowDatabaseUrl`.
+By default, the shadow database name is your `DB_NAME` with `_shadow` added.
+
+For example:
+
+| `DB_NAME` | Shadow database |
+| --- | --- |
+| `luuna_db` | `luuna_db_shadow` |
+| `my_app` | `my_app_shadow` |
 
 ## Setup
 
