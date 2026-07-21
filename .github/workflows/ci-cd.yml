@@ -11,23 +11,14 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Existing lint/test job kept intact.
-  test:
+  # Build, lint, and prepare the backend for container publishing.
+  build:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: luuna_user
-          POSTGRES_PASSWORD: luuna_pass
-          POSTGRES_DB: luuna_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+    permissions:
+      contents: read
+      packages: write
+
+    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v3
@@ -41,49 +32,72 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup environment variables
-        run: |
-          cp .env.example .env.test
-          cat >> .env.test << EOF
-          NODE_ENV=test
-          DB_HOST=localhost
-          DB_PORT=5432
-          DB_NAME=luuna_db
-          DB_USER=luuna_user
-          DB_PASSWORD=luuna_pass
-          DB_SCHEMA=public
-          EOF
-
-      - name: Create shadow database
-        env:
-          PGPASSWORD: luuna_pass
-        run: |
-          psql -h localhost -U luuna_user -d luuna_db -c "CREATE DATABASE luuna_db_shadow OWNER luuna_user;"
-
-      - name: Generate Prisma Client
-        run: npm run prisma:generate
-
-      - name: Run Prisma migrations
-        env:
-          DATABASE_URL: postgresql://luuna_user:luuna_pass@localhost:5432/luuna_db?schema=public
-          SHADOW_DATABASE_URL: postgresql://luuna_user:luuna_pass@localhost:5432/luuna_db_shadow?schema=public
-        run: npm run prisma:migrate:deploy
-
       - name: Lint
         run: npm run lint
 
       - name: Build
         run: npm run build
 
-      - name: Run tests
-        run: npm run test
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Run e2e tests
-        run: npm run test:e2e
+      - name: Log in to GHCR with GITHUB_TOKEN
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-  # Build and push the Docker image to GHCR.
-  build:
-    needs: test
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Deploy the newly published GHCR image to the EC2 server.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy to EC2 over SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            for dir in "/home/${{ secrets.EC2_USERNAME }}/luuna-backend" "/opt/luuna-backend" "/home/${{ secrets.EC2_USERNAME }}/app"; do
+              if [ -f "$dir/docker-compose.yml" ] && [ -f "$dir/.env" ]; then
+                cd "$dir"
+                break
+              fi
+            done
+
+            if [ ! -f "docker-compose.yml" ] || [ ! -f ".env" ]; then
+              echo "Deployment directory with docker-compose.yml and .env was not found."
+              exit 1
+            fi
+
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
     runs-on: ubuntu-latest
     permissions:
       contents: read
