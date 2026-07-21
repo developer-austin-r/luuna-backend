@@ -65,21 +65,48 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
           script: |
             set -e
-
-            for dir in "/home/${{ secrets.EC2_USERNAME }}/luuna-backend" "/opt/luuna-backend" "/home/${{ secrets.EC2_USERNAME }}/app"; do
-              if [ -f "$dir/docker-compose.yml" ] && [ -f "$dir/.env" ]; then
-                cd "$dir"
-                break
-              fi
-            done
-
-            if [ ! -f "docker-compose.yml" ] || [ ! -f ".env" ]; then
-              echo "Deployment directory with docker-compose.yml and .env was not found."
+            DEPLOY_DIR="/home/ubuntu/luuna-backend"
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              mkdir -p "$DEPLOY_DIR"
+            fi
+            cd "$DEPLOY_DIR"
+            if [ ! -f ".env" ]; then
+              echo "ERROR: .env file not found in $DEPLOY_DIR"
               exit 1
             fi
-
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "Generating docker-compose.yml..."
+              echo "version: '3.8'" > docker-compose.yml
+              echo "services:" >> docker-compose.yml
+              echo "  backend:" >> docker-compose.yml
+              echo "    image: ghcr.io/developer-austin-r/luuna-backend:latest" >> docker-compose.yml
+              echo "    container_name: luuna-backend" >> docker-compose.yml
+              echo "    restart: unless-stopped" >> docker-compose.yml
+              echo "    ports:" >> docker-compose.yml
+              echo "      - \"3000:3000\"" >> docker-compose.yml
+              echo "    env_file:" >> docker-compose.yml
+              echo "      - .env" >> docker-compose.yml
+              echo "    environment:" >> docker-compose.yml
+              echo "      NODE_ENV: production" >> docker-compose.yml
+              echo "    networks:" >> docker-compose.yml
+              echo "      - luuna-network" >> docker-compose.yml
+              echo "    healthcheck:" >> docker-compose.yml
+              echo "      interval: 30s" >> docker-compose.yml
+              echo "      timeout: 10s" >> docker-compose.yml
+              echo "      retries: 3" >> docker-compose.yml
+              echo "      start_period: 5s" >> docker-compose.yml
+              echo "networks:" >> docker-compose.yml
+              echo "  luuna-network:" >> docker-compose.yml
+              echo "    driver: bridge" >> docker-compose.yml
+              echo "✓ docker-compose.yml created successfully."
+            fi
+            echo "Pulling latest image from GHCR..."
             docker compose pull
+            echo "Starting services..."
             docker compose up -d
+            echo "Cleaning up unused images..."
             docker image prune -f
+            echo "✓ Deployment completed successfully!"

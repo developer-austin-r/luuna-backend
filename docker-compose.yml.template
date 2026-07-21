@@ -1,0 +1,52 @@
+# Docker Compose Configuration for NestJS Backend
+# This file should be placed at: /home/ubuntu/luuna-backend/docker-compose.yml
+# 
+# Usage:
+#   docker compose pull       # Pull the latest image from GHCR
+#   docker compose up -d      # Start services in background
+#   docker compose down       # Stop services
+#   docker compose logs -f    # View logs
+
+version: '3.8'
+
+services:
+  backend:
+    # Image is pulled from GitHub Container Registry (GHCR)
+    # Uses the :latest tag which is updated on every main branch push
+    image: ghcr.io/developer-austin-r/luuna-backend:latest
+    
+    # Container name for easy reference
+    container_name: luuna-backend
+    
+    # Auto-restart if the container crashes
+    restart: unless-stopped
+    
+    # Port mapping: expose port 3000 from container to host
+    # Format: "HOST_PORT:CONTAINER_PORT"
+    ports:
+      - "3000:3000"
+    
+    # Load environment variables from .env file
+    env_file:
+      - .env
+    
+    # Additional environment variables (can override .env)
+    environment:
+      NODE_ENV: production
+    
+    # Connect to custom network for inter-service communication
+    networks:
+      - luuna-network
+    
+    # Health check configuration
+    # Verifies that the application is healthy
+    healthcheck:
+      interval: 30s        # Check every 30 seconds
+      timeout: 10s         # Wait max 10 seconds for response
+      retries: 3           # Mark unhealthy after 3 failed checks
+      start_period: 5s     # Wait 5 seconds before first check
+
+# Custom network for service-to-service communication
+networks:
+  luuna-network:
+    driver: bridge
