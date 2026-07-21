@@ -11,7 +11,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Lint and Test
+  # Existing lint/test job kept intact.
   test:
     runs-on: ubuntu-latest
     services:
@@ -81,7 +81,7 @@ jobs:
       - name: Run e2e tests
         run: npm run test:e2e
 
-  # Build and Push Docker Image
+  # Build and push the Docker image to GHCR.
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -97,7 +97,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Log in to Container Registry
+      - name: Log in to GHCR with GITHUB_TOKEN
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
@@ -110,9 +110,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha
 
       - name: Build and push Docker image
@@ -125,17 +123,34 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Deploy to Production (Optional - uncomment when ready)
-  # deploy:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  #   steps:
-  #     - name: Deploy to AWS
-  #       env:
-  #         AWS_REGION: us-east-1
-  #         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #       run: |
-  #         # Add your deployment script here
-  #         echo "Deploying to production..."
+  # Deploy the newly published GHCR image to the EC2 server.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy to EC2 over SSH
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            for dir in "/home/${{ secrets.EC2_USERNAME }}/luuna-backend" "/opt/luuna-backend" "/home/${{ secrets.EC2_USERNAME }}/app"; do
+              if [ -f "$dir/docker-compose.yml" ] && [ -f "$dir/.env" ]; then
+                cd "$dir"
+                break
+              fi
+            done
+
+            if [ ! -f "docker-compose.yml" ] || [ ! -f ".env" ]; then
+              echo "Deployment directory with docker-compose.yml and .env was not found."
+              exit 1
+            fi
+
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
