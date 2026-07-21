@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: luuna-backend-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-luuna_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-luuna_pass}
+      POSTGRES_DB: ${DB_NAME:-luuna_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-luuna_user} -d ${DB_NAME:-luuna_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - luuna-network
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: luuna-backend-app
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${BACKEND_PORT:-3000}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-luuna_db}
+      DB_USER: ${DB_USER:-luuna_user}
+      DB_PASSWORD: ${DB_PASSWORD:-luuna_pass}
+      DB_SCHEMA: ${DB_SCHEMA:-public}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ..:/app
+      - /app/node_modules
+    networks:
+      - luuna-network
+    command: npm run start:dev
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  luuna-network:
+    driver: bridge
