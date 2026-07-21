@@ -58,26 +58,26 @@ __decorate([
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOkResponse)({ description: 'Returns a user by ID.' }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], UserController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, swagger_1.ApiOkResponse)({ description: 'User updated successfully.' }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_user_dto_1.UpdateUserDto]),
+    __metadata("design:paramtypes", [String, update_user_dto_1.UpdateUserDto]),
     __metadata("design:returntype", void 0)
 ], UserController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, swagger_1.ApiOkResponse)({ description: 'User deleted successfully.' }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], UserController.prototype, "remove", null);
 exports.UserController = UserController = __decorate([

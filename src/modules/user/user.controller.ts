@@ -4,7 +4,7 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -32,14 +32,14 @@ export class UserController {
 
   @Get(':id')
   @ApiOkResponse({ description: 'Returns a user by ID.' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.userService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOkResponse({ description: 'User updated successfully.' })
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
     return this.userService.update(id, updateUserDto);
@@ -47,7 +47,7 @@ export class UserController {
 
   @Delete(':id')
   @ApiOkResponse({ description: 'User deleted successfully.' })
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.userService.remove(id);
   }
 }
