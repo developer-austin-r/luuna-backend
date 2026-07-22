@@ -2,18 +2,22 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build, lint, and prepare the backend for container publishing.
   build:
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
@@ -21,92 +25,113 @@ jobs:
     if: github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GHCR with GITHUB_TOKEN
-        uses: docker/login-action@v2
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract Docker Metadata
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable={{is_default_branch}}
             type=sha
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-  # Deploy the newly published GHCR image to the EC2 server.
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Deploy to EC2 over SSH
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
+
           script: |
             set -e
+
             DEPLOY_DIR="/home/ubuntu/luuna-backend"
-            if [ ! -d "$DEPLOY_DIR" ]; then
-              mkdir -p "$DEPLOY_DIR"
+
+            mkdir -p $DEPLOY_DIR
+            cd $DEPLOY_DIR
+
+            echo "Creating .env file..."
+
+            cat > .env <<EOF
+            ${{ secrets.ENV_FILE }}
+            EOF
+
+            echo ".env created successfully."
+
+            if [ ! -f docker-compose.yml ]; then
+
+              cat > docker-compose.yml <<EOF
+            version: "3.8"
+
+            services:
+              backend:
+                image: ghcr.io/developer-austin-r/luuna-backend:latest
+                container_name: luuna-backend
+                restart: unless-stopped
+
+                ports:
+                  - "3000:3000"
+
+                env_file:
+                  - .env
+
+                environment:
+                  NODE_ENV: production
+
+                networks:
+                  - luuna-network
+
+            networks:
+              luuna-network:
+                driver: bridge
+            EOF
+
             fi
-            cd "$DEPLOY_DIR"
-            if [ ! -f ".env" ]; then
-              echo "ERROR: .env file not found in $DEPLOY_DIR"
-              exit 1
-            fi
-            if [ ! -f "docker-compose.yml" ]; then
-              echo "Generating docker-compose.yml..."
-              echo "version: '3.8'" > docker-compose.yml
-              echo "services:" >> docker-compose.yml
-              echo "  backend:" >> docker-compose.yml
-              echo "    image: ghcr.io/developer-austin-r/luuna-backend:latest" >> docker-compose.yml
-              echo "    container_name: luuna-backend" >> docker-compose.yml
-              echo "    restart: unless-stopped" >> docker-compose.yml
-              echo "    ports:" >> docker-compose.yml
-              echo "      - \"3000:3000\"" >> docker-compose.yml
-              echo "    env_file:" >> docker-compose.yml
-              echo "      - .env" >> docker-compose.yml
-              echo "    environment:" >> docker-compose.yml
-              echo "      NODE_ENV: production" >> docker-compose.yml
-              echo "    networks:" >> docker-compose.yml
-              echo "      - luuna-network" >> docker-compose.yml
-              echo "    healthcheck:" >> docker-compose.yml
-              echo "      interval: 30s" >> docker-compose.yml
-              echo "      timeout: 10s" >> docker-compose.yml
-              echo "      retries: 3" >> docker-compose.yml
-              echo "      start_period: 5s" >> docker-compose.yml
-              echo "networks:" >> docker-compose.yml
-              echo "  luuna-network:" >> docker-compose.yml
-              echo "    driver: bridge" >> docker-compose.yml
-              echo "✓ docker-compose.yml created successfully."
-            fi
-            echo "Pulling latest image from GHCR..."
+
+            echo "Logging into GHCR..."
+
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io \
+              -u ${{ github.actor }} \
+              --password-stdin
+
+            echo "Pulling latest image..."
+
             docker compose pull
-            echo "Starting services..."
+
+            echo "Restarting containers..."
+
             docker compose up -d
-            echo "Cleaning up unused images..."
+
+            echo "Cleaning old images..."
+
             docker image prune -f
-            echo "✓ Deployment completed successfully!"
+
+            echo "Deployment completed successfully."
