@@ -24,7 +24,7 @@ RUN npm run prisma:generate
 RUN npm run build
 
 # Stage 2: Runtime
-FROM node:24-bookworm-slim
+FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app
 
@@ -62,4 +62,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start the application
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
