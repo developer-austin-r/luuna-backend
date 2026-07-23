@@ -1,0 +1,43 @@
+name: Backend Pull Request CI
+
+# Pre-merge validation only. This workflow never builds images or deploys.
+on:
+  pull_request:
+    branches:
+      - main
+
+# Cancel an outdated run when new commits are pushed to the same pull request.
+concurrency:
+  group: backend-pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend-quality-and-build:
+    name: Backend — lint and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+
+      # Node 24 matches the backend Docker runtime used by this project.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `npm run lint` first runs `prelint`, which generates Prisma client types.
+      # Commands fail the job immediately when they return a non-zero status.
+      - name: Lint backend
+        run: npm run lint
+
+      - name: Build backend
+        run: npm run build
