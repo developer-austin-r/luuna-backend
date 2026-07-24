@@ -20,17 +20,19 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Helper to serialize BigInt values to numbers/strings for JSON safety.
-   */
   private serializeBigInt<T>(data: T): T {
     return JSON.parse(
-      JSON.stringify(data, (_, value) =>
-        typeof value === 'bigint' ? (Number.isSafeInteger(Number(value)) ? Number(value) : value.toString()) : value,
-      ),
-    );
+      JSON.stringify(data, (_, value: unknown) => {
+        if (typeof value === 'bigint') {
+          return Number.isSafeInteger(Number(value))
+            ? Number(value)
+            : value.toString();
+        }
+        return value;
+      }),
+    ) as T;
   }
 
   /**
@@ -61,29 +63,29 @@ export class ProductService {
       ...(brandId ? { brandId } : {}),
       ...(categoryId
         ? {
-          productCategories: {
-            some: {
-              categoryId,
+            productCategories: {
+              some: {
+                categoryId,
+              },
             },
-          },
-        }
+          }
         : {}),
       ...(minPrice !== undefined || maxPrice !== undefined
         ? {
-          finalPrice: {
-            ...(minPrice !== undefined ? { gte: minPrice } : {}),
-            ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
-          },
-        }
+            finalPrice: {
+              ...(minPrice !== undefined ? { gte: minPrice } : {}),
+              ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+            },
+          }
         : {}),
       ...(search
         ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { sku: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-          ],
-        }
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { sku: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+            ],
+          }
         : {}),
     };
 
@@ -186,13 +188,17 @@ export class ProductService {
         throw new ConflictException(`Product with SKU "${sku}" already exists`);
       }
       if (existing.slug === slug) {
-        throw new ConflictException(`Product with Slug "${slug}" already exists`);
+        throw new ConflictException(
+          `Product with Slug "${slug}" already exists`,
+        );
       }
     }
 
     // Verify brand if provided
     if (brandId) {
-      const brand = await this.prisma.brand.findUnique({ where: { id: brandId } });
+      const brand = await this.prisma.brand.findUnique({
+        where: { id: brandId },
+      });
       if (!brand) {
         throw new BadRequestException(`Brand with ID "${brandId}" not found`);
       }
@@ -214,52 +220,52 @@ export class ProductService {
           availableStock: calculatedAvailableStock,
           ...(categoryIds && categoryIds.length > 0
             ? {
-              productCategories: {
-                createMany: {
-                  data: categoryIds.map((catId) => ({ categoryId: catId })),
+                productCategories: {
+                  createMany: {
+                    data: categoryIds.map((catId) => ({ categoryId: catId })),
+                  },
                 },
-              },
-            }
+              }
             : {}),
           ...(images && images.length > 0
             ? {
-              images: {
-                createMany: {
-                  data: images,
+                images: {
+                  createMany: {
+                    data: images,
+                  },
                 },
-              },
-            }
+              }
             : {}),
           ...(videos && videos.length > 0
             ? {
-              videos: {
-                createMany: {
-                  data: videos,
+                videos: {
+                  createMany: {
+                    data: videos,
+                  },
                 },
-              },
-            }
+              }
             : {}),
           ...(keywords && keywords.length > 0
             ? {
-              keywords: {
-                createMany: {
-                  data: keywords.map((kw) => ({ keyword: kw })),
+                keywords: {
+                  createMany: {
+                    data: keywords.map((kw) => ({ keyword: kw })),
+                  },
                 },
-              },
-            }
+              }
             : {}),
           ...(warehouse || stock > 0
             ? {
-              inventories: {
-                create: {
-                  totalStock: stock,
-                  reservedStock,
-                  availableStock: calculatedAvailableStock,
-                  warehouse: warehouse || 'Default Warehouse',
-                  lastSync: new Date(),
+                inventories: {
+                  create: {
+                    totalStock: stock,
+                    reservedStock,
+                    availableStock: calculatedAvailableStock,
+                    warehouse: warehouse || 'Default Warehouse',
+                    lastSync: new Date(),
+                  },
                 },
-              },
-            }
+              }
             : {}),
         },
         include: {
@@ -272,12 +278,7 @@ export class ProductService {
         },
       });
 
-      // return product;
-      return JSON.parse(
-        JSON.stringify(product, (_, value) =>
-          typeof value === 'bigint' ? value.toString() : value,
-        ),
-      );
+      return this.serializeBigInt(product);
     });
   }
 
@@ -298,6 +299,10 @@ export class ProductService {
       warehouse,
       ...productData
     } = updateProductDto;
+    void images;
+    void videos;
+    void keywords;
+    void warehouse;
 
     // Check SKU / Slug uniqueness if changed
     if ((sku && sku !== existing.sku) || (slug && slug !== existing.slug)) {
@@ -306,10 +311,7 @@ export class ProductService {
           AND: [
             { id: { not: id } },
             {
-              OR: [
-                ...(sku ? [{ sku }] : []),
-                ...(slug ? [{ slug }] : []),
-              ],
+              OR: [...(sku ? [{ sku }] : []), ...(slug ? [{ slug }] : [])],
             },
           ],
         },
@@ -317,16 +319,22 @@ export class ProductService {
 
       if (conflict) {
         if (sku && conflict.sku === sku) {
-          throw new ConflictException(`Product with SKU "${sku}" already exists`);
+          throw new ConflictException(
+            `Product with SKU "${sku}" already exists`,
+          );
         }
         if (slug && conflict.slug === slug) {
-          throw new ConflictException(`Product with Slug "${slug}" already exists`);
+          throw new ConflictException(
+            `Product with Slug "${slug}" already exists`,
+          );
         }
       }
     }
 
     if (brandId) {
-      const brand = await this.prisma.brand.findUnique({ where: { id: brandId } });
+      const brand = await this.prisma.brand.findUnique({
+        where: { id: brandId },
+      });
       if (!brand) {
         throw new BadRequestException(`Brand with ID "${brandId}" not found`);
       }
@@ -338,7 +346,10 @@ export class ProductService {
         await tx.productCategory.deleteMany({ where: { productId: id } });
         if (categoryIds.length > 0) {
           await tx.productCategory.createMany({
-            data: categoryIds.map((catId) => ({ productId: id, categoryId: catId })),
+            data: categoryIds.map((catId) => ({
+              productId: id,
+              categoryId: catId,
+            })),
           });
         }
       }
@@ -446,7 +457,9 @@ export class ProductService {
     });
 
     if (!image) {
-      throw new NotFoundException(`Image with ID "${imageId}" not found for this product`);
+      throw new NotFoundException(
+        `Image with ID "${imageId}" not found for this product`,
+      );
     }
 
     return this.prisma.productImage.delete({
@@ -488,7 +501,9 @@ export class ProductService {
     });
 
     if (!video) {
-      throw new NotFoundException(`Video with ID "${videoId}" not found for this product`);
+      throw new NotFoundException(
+        `Video with ID "${videoId}" not found for this product`,
+      );
     }
 
     return this.prisma.productVideo.delete({
@@ -524,7 +539,9 @@ export class ProductService {
     });
 
     if (!keyword) {
-      throw new NotFoundException(`Keyword with ID "${keywordId}" not found for this product`);
+      throw new NotFoundException(
+        `Keyword with ID "${keywordId}" not found for this product`,
+      );
     }
 
     return this.prisma.productKeyword.delete({
@@ -540,7 +557,10 @@ export class ProductService {
     await this.findOne(productId);
 
     const { totalStock, reservedStock = 0, availableStock, warehouse } = dto;
-    const calcAvailableStock = availableStock !== undefined ? availableStock : totalStock - reservedStock;
+    const calcAvailableStock =
+      availableStock !== undefined
+        ? availableStock
+        : totalStock - reservedStock;
 
     return this.prisma.$transaction(async (tx) => {
       // Find existing inventory record or create new
@@ -548,35 +568,43 @@ export class ProductService {
         where: { productId, warehouse },
       });
 
-      let inventory;
-      if (existingInventory) {
-        inventory = await tx.inventory.update({
-          where: { id: existingInventory.id },
-          data: {
-            totalStock,
-            reservedStock,
-            availableStock: calcAvailableStock,
-            lastSync: new Date(),
-          },
-        });
-      } else {
-        inventory = await tx.inventory.create({
-          data: {
-            productId,
-            totalStock,
-            reservedStock,
-            availableStock: calcAvailableStock,
-            warehouse,
-            lastSync: new Date(),
-          },
-        });
-      }
+      const inventory = existingInventory
+        ? await tx.inventory.update({
+            where: { id: existingInventory.id },
+            data: {
+              totalStock,
+              reservedStock,
+              availableStock: calcAvailableStock,
+              lastSync: new Date(),
+            },
+          })
+        : await tx.inventory.create({
+            data: {
+              productId,
+              totalStock,
+              reservedStock,
+              availableStock: calcAvailableStock,
+              warehouse,
+              lastSync: new Date(),
+            },
+          });
 
       // Sync overall product stock
-      const allInventories = await tx.inventory.findMany({ where: { productId } });
-      const aggregatedTotal = allInventories.reduce((acc, curr) => acc + curr.totalStock, 0);
-      const aggregatedReserved = allInventories.reduce((acc, curr) => acc + curr.reservedStock, 0);
-      const aggregatedAvailable = allInventories.reduce((acc, curr) => acc + curr.availableStock, 0);
+      const allInventories = await tx.inventory.findMany({
+        where: { productId },
+      });
+      const aggregatedTotal = allInventories.reduce(
+        (acc, curr) => acc + curr.totalStock,
+        0,
+      );
+      const aggregatedReserved = allInventories.reduce(
+        (acc, curr) => acc + curr.reservedStock,
+        0,
+      );
+      const aggregatedAvailable = allInventories.reduce(
+        (acc, curr) => acc + curr.availableStock,
+        0,
+      );
 
       await tx.product.update({
         where: { id: productId },
@@ -633,7 +661,9 @@ export class ProductService {
         where: { id: dto.brandId },
       });
       if (!brand) {
-        throw new BadRequestException(`Brand with ID "${dto.brandId}" not found`);
+        throw new BadRequestException(
+          `Brand with ID "${dto.brandId}" not found`,
+        );
       }
     }
 

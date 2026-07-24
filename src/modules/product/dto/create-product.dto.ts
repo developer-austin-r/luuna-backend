@@ -1,7 +1,6 @@
 import {
   IsArray,
   IsBoolean,
-  IsDecimal,
   IsInt,
   IsNumber,
   IsOptional,
@@ -49,7 +48,9 @@ export class CreateProductDto {
   @IsString()
   slug: string;
 
-  @ApiPropertyOptional({ example: 'High quality wireless headphones with active noise cancellation.' })
+  @ApiPropertyOptional({
+    example: 'High quality wireless headphones with active noise cancellation.',
+  })
   @IsOptional()
   @IsString()
   shortDescription?: string;

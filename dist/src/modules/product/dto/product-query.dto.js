@@ -114,7 +114,10 @@ __decorate([
     __metadata("design:type", Number)
 ], ProductQueryDto.prototype, "maxPrice", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ enum: ProductSortBy, default: ProductSortBy.CREATED_AT }),
+    (0, swagger_1.ApiPropertyOptional)({
+        enum: ProductSortBy,
+        default: ProductSortBy.CREATED_AT,
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(ProductSortBy),
     __metadata("design:type", String)

@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class CreateProductImageDto {
   @ApiProperty({ example: 'https://example.com/images/product-1.jpg' })
@@ -61,7 +69,10 @@ export class AssignCategoriesDto {
 }
 
 export class AssignBrandDto {
-  @ApiPropertyOptional({ example: '123e4567-e89b-12d3-a456-426614174000', nullable: true })
+  @ApiPropertyOptional({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
   @IsOptional()
   @IsUUID()
   brandId?: string | null;

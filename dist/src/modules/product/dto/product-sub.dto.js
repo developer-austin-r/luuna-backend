@@ -101,7 +101,10 @@ class AssignBrandDto {
 }
 exports.AssignBrandDto = AssignBrandDto;
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: '123e4567-e89b-12d3-a456-426614174000', nullable: true }),
+    (0, swagger_1.ApiPropertyOptional)({
+        example: '123e4567-e89b-12d3-a456-426614174000',
+        nullable: true,
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", Object)

@@ -1,4 +1,13 @@
-import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -78,7 +87,10 @@ export class ProductQueryDto {
   @Min(0)
   maxPrice?: number;
 
-  @ApiPropertyOptional({ enum: ProductSortBy, default: ProductSortBy.CREATED_AT })
+  @ApiPropertyOptional({
+    enum: ProductSortBy,
+    default: ProductSortBy.CREATED_AT,
+  })
   @IsOptional()
   @IsEnum(ProductSortBy)
   sortBy?: ProductSortBy = ProductSortBy.CREATED_AT;

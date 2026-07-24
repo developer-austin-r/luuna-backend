@@ -85,7 +85,10 @@ exports.ProductController = ProductController;
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get paginated list of products with filters' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Products fetched successfully.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Products fetched successfully.',
+    }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [dto_1.ProductQueryDto]),
@@ -95,8 +98,14 @@ __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get product details by ID' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Product details retrieved successfully.' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.NOT_FOUND, description: 'Product not found.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Product details retrieved successfully.',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.NOT_FOUND,
+        description: 'Product not found.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -106,8 +115,14 @@ __decorate([
     (0, common_1.Post)(),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new product with initial relations' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CREATED, description: 'Product created successfully.' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CONFLICT, description: 'Product SKU or Slug already exists.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.CREATED,
+        description: 'Product created successfully.',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.CONFLICT,
+        description: 'Product SKU or Slug already exists.',
+    }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [dto_1.CreateProductDto]),
@@ -117,8 +132,14 @@ __decorate([
     (0, common_1.Patch)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Update product details' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Product updated successfully.' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.NOT_FOUND, description: 'Product not found.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Product updated successfully.',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.NOT_FOUND,
+        description: 'Product not found.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -127,10 +148,20 @@ __decorate([
 ], ProductController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete product (soft delete by default, permanent with flag)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Delete product (soft delete by default, permanent with flag)',
+    }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiQuery)({ name: 'permanent', required: false, type: Boolean, description: 'Permanent deletion' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Product deleted successfully.' }),
+    (0, swagger_1.ApiQuery)({
+        name: 'permanent',
+        required: false,
+        type: Boolean,
+        description: 'Permanent deletion',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Product deleted successfully.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Query)('permanent')),
     __metadata("design:type", Function),
@@ -141,7 +172,10 @@ __decorate([
     (0, common_1.Patch)(':id/archive'),
     (0, swagger_1.ApiOperation)({ summary: 'Archive product' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Product archived successfully.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Product archived successfully.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -151,7 +185,10 @@ __decorate([
     (0, common_1.Patch)(':id/restore'),
     (0, swagger_1.ApiOperation)({ summary: 'Restore archived or soft-deleted product' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Product restored successfully.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Product restored successfully.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -162,7 +199,10 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Add image to product' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CREATED, description: 'Product image added successfully.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.CREATED,
+        description: 'Product image added successfully.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -173,7 +213,10 @@ __decorate([
     (0, common_1.Get)(':id/images'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all images for a product' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Product images retrieved.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Product images retrieved.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -196,7 +239,10 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     (0, swagger_1.ApiOperation)({ summary: 'Add video to product' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.CREATED, description: 'Product video added.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.CREATED,
+        description: 'Product video added.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -207,7 +253,10 @@ __decorate([
     (0, common_1.Get)(':id/videos'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all videos for a product' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Product videos retrieved.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Product videos retrieved.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -261,9 +310,14 @@ __decorate([
 ], ProductController.prototype, "removeKeyword", null);
 __decorate([
     (0, common_1.Put)(':id/inventory'),
-    (0, swagger_1.ApiOperation)({ summary: 'Update product inventory stock and sync overall totals' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Update product inventory stock and sync overall totals',
+    }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Inventory updated successfully.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Inventory updated successfully.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -272,9 +326,14 @@ __decorate([
 ], ProductController.prototype, "updateInventory", null);
 __decorate([
     (0, common_1.Post)(':id/categories'),
-    (0, swagger_1.ApiOperation)({ summary: 'Assign categories to product (replaces current category assignments)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Assign categories to product (replaces current category assignments)',
+    }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Categories assigned successfully.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Categories assigned successfully.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -285,7 +344,10 @@ __decorate([
     (0, common_1.Patch)(':id/brand'),
     (0, swagger_1.ApiOperation)({ summary: 'Assign or update brand for a product' }),
     (0, swagger_1.ApiParam)({ name: 'id', description: 'Product UUID' }),
-    (0, swagger_1.ApiResponse)({ status: common_1.HttpStatus.OK, description: 'Brand assigned successfully.' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Brand assigned successfully.',
+    }),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),

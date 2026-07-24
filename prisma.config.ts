@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
-import { buildDatabaseUrl, buildShadowDatabaseUrl } from './src/config/database.config';
+import {
+  buildDatabaseUrl,
+  buildShadowDatabaseUrl,
+} from './src/config/database.config';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -12,4 +15,3 @@ export default defineConfig({
     shadowDatabaseUrl: buildShadowDatabaseUrl(),
   },
 });
-

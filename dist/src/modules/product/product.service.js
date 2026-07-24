@@ -18,7 +18,14 @@ let ProductService = class ProductService {
         this.prisma = prisma;
     }
     serializeBigInt(data) {
-        return JSON.parse(JSON.stringify(data, (_, value) => typeof value === 'bigint' ? (Number.isSafeInteger(Number(value)) ? Number(value) : value.toString()) : value));
+        return JSON.parse(JSON.stringify(data, (_, value) => {
+            if (typeof value === 'bigint') {
+                return Number.isSafeInteger(Number(value))
+                    ? Number(value)
+                    : value.toString();
+            }
+            return value;
+        }));
     }
     async findAll(query) {
         const { page = 1, limit = 10, search, brandId, categoryId, status, archive, includeDeleted = false, minPrice, maxPrice, sortBy = 'createdAt', sortOrder = 'desc', } = query;
@@ -130,7 +137,9 @@ let ProductService = class ProductService {
             }
         }
         if (brandId) {
-            const brand = await this.prisma.brand.findUnique({ where: { id: brandId } });
+            const brand = await this.prisma.brand.findUnique({
+                where: { id: brandId },
+            });
             if (!brand) {
                 throw new common_1.BadRequestException(`Brand with ID "${brandId}" not found`);
             }
@@ -205,22 +214,23 @@ let ProductService = class ProductService {
                     keywords: true,
                 },
             });
-            return JSON.parse(JSON.stringify(product, (_, value) => typeof value === 'bigint' ? value.toString() : value));
+            return this.serializeBigInt(product);
         });
     }
     async update(id, updateProductDto) {
         const existing = await this.findOne(id);
         const { sku, slug, brandId, categoryIds, images, videos, keywords, warehouse, ...productData } = updateProductDto;
+        void images;
+        void videos;
+        void keywords;
+        void warehouse;
         if ((sku && sku !== existing.sku) || (slug && slug !== existing.slug)) {
             const conflict = await this.prisma.product.findFirst({
                 where: {
                     AND: [
                         { id: { not: id } },
                         {
-                            OR: [
-                                ...(sku ? [{ sku }] : []),
-                                ...(slug ? [{ slug }] : []),
-                            ],
+                            OR: [...(sku ? [{ sku }] : []), ...(slug ? [{ slug }] : [])],
                         },
                     ],
                 },
@@ -235,7 +245,9 @@ let ProductService = class ProductService {
             }
         }
         if (brandId) {
-            const brand = await this.prisma.brand.findUnique({ where: { id: brandId } });
+            const brand = await this.prisma.brand.findUnique({
+                where: { id: brandId },
+            });
             if (!brand) {
                 throw new common_1.BadRequestException(`Brand with ID "${brandId}" not found`);
             }
@@ -245,7 +257,10 @@ let ProductService = class ProductService {
                 await tx.productCategory.deleteMany({ where: { productId: id } });
                 if (categoryIds.length > 0) {
                     await tx.productCategory.createMany({
-                        data: categoryIds.map((catId) => ({ productId: id, categoryId: catId })),
+                        data: categoryIds.map((catId) => ({
+                            productId: id,
+                            categoryId: catId,
+                        })),
                     });
                 }
             }
@@ -396,14 +411,15 @@ let ProductService = class ProductService {
     async updateInventory(productId, dto) {
         await this.findOne(productId);
         const { totalStock, reservedStock = 0, availableStock, warehouse } = dto;
-        const calcAvailableStock = availableStock !== undefined ? availableStock : totalStock - reservedStock;
+        const calcAvailableStock = availableStock !== undefined
+            ? availableStock
+            : totalStock - reservedStock;
         return this.prisma.$transaction(async (tx) => {
             const existingInventory = await tx.inventory.findFirst({
                 where: { productId, warehouse },
             });
-            let inventory;
-            if (existingInventory) {
-                inventory = await tx.inventory.update({
+            const inventory = existingInventory
+                ? await tx.inventory.update({
                     where: { id: existingInventory.id },
                     data: {
                         totalStock,
@@ -411,10 +427,8 @@ let ProductService = class ProductService {
                         availableStock: calcAvailableStock,
                         lastSync: new Date(),
                     },
-                });
-            }
-            else {
-                inventory = await tx.inventory.create({
+                })
+                : await tx.inventory.create({
                     data: {
                         productId,
                         totalStock,
@@ -424,8 +438,9 @@ let ProductService = class ProductService {
                         lastSync: new Date(),
                     },
                 });
-            }
-            const allInventories = await tx.inventory.findMany({ where: { productId } });
+            const allInventories = await tx.inventory.findMany({
+                where: { productId },
+            });
             const aggregatedTotal = allInventories.reduce((acc, curr) => acc + curr.totalStock, 0);
             const aggregatedReserved = allInventories.reduce((acc, curr) => acc + curr.reservedStock, 0);
             const aggregatedAvailable = allInventories.reduce((acc, curr) => acc + curr.availableStock, 0);
