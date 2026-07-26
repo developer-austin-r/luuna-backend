@@ -8,6 +8,10 @@
   - `EC2_HOST`: Your EC2 instance IP or domain
   - `EC2_USERNAME`: SSH username (typically `ubuntu`)
   - `EC2_SSH_KEY`: Your private SSH key for EC2
+  - `GHCR_PAT`: Token with permission to pull the container image
+
+The production `.env` file is kept only on the EC2 server. It is not stored in
+GitHub Actions secrets and the deployment workflow never replaces it.
 
 ## EC2 Setup Steps
 
@@ -28,34 +32,53 @@ Create a `.env` file in `/home/ubuntu/luuna-backend/` with your production envir
 cat > /home/ubuntu/luuna-backend/.env << 'EOF'
 NODE_ENV=production
 PORT=3000
-HOSTNAME=0.0.0.0
-DATABASE_URL=postgresql://username:password@postgres-host:5432/luuna_db
-DB_HOST=postgres-host
+DB_HOST=db
 DB_PORT=5432
 DB_NAME=luuna_db
-DB_USER=username
-DB_PASSWORD=password
+DB_USER=luuna_user
+DB_PASSWORD=replace-with-a-long-unique-password
 DB_SCHEMA=public
 EOF
+
+chmod 600 /home/ubuntu/luuna-backend/.env
 ```
 
-**Important:** Replace the database credentials with your actual PostgreSQL connection details.
+**Important:** `DB_HOST=db` is the PostgreSQL service name in Docker Compose.
+Use a long, unique value for `DB_PASSWORD`; it is also used to initialize the
+persistent PostgreSQL database volume.
 
-### 3. Optional: Pre-create `docker-compose.yml`
+### 3. Create `docker-compose.yml`
 
-The GitHub Actions workflow will automatically generate `docker-compose.yml` if it doesn't exist. However, you can create it manually before the first deployment:
+Copy the repository template to the server before the first deployment:
 
 ```bash
 cp docker-compose.yml.template /home/ubuntu/luuna-backend/docker-compose.yml
 ```
 
-Or create it directly:
+The template includes both the backend and a persistent PostgreSQL 16 service.
+If you create the file directly, use:
 
 ```bash
 cat > /home/ubuntu/luuna-backend/docker-compose.yml << 'EOF'
-version: '3.8'
-
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: luuna-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - luuna-network
+
   backend:
     image: ghcr.io/developer-austin-r/luuna-backend:latest
     container_name: luuna-backend
@@ -66,6 +89,9 @@ services:
       - .env
     environment:
       NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - luuna-network
     healthcheck:
@@ -77,6 +103,9 @@ services:
 networks:
   luuna-network:
     driver: bridge
+
+volumes:
+  postgres_data:
 EOF
 ```
 
@@ -88,11 +117,20 @@ EOF
    - `ghcr.io/developer-austin-r/luuna-backend:sha-<commit-hash>`
 3. **Deploy**: SSH into EC2 and:
    - Create `/home/ubuntu/luuna-backend` if it doesn't exist
-   - Verify `.env` file exists
-   - Generate `docker-compose.yml` if it doesn't exist
+   - Verify the server-managed `.env` and `docker-compose.yml` files exist
    - Pull the latest image from GHCR
-   - Start/restart containers with `docker compose up -d`
+   - Start PostgreSQL and wait for its health check
+   - Run `prisma migrate deploy` using the newly pulled image
+   - Recreate the backend container without stopping PostgreSQL
    - Clean up unused images with `docker image prune -f`
+
+The workflow fails safely if either server file is missing. It does not change
+the contents of `.env`; update it manually on EC2 when credentials or runtime
+settings need to change.
+
+Every deployment applies the migration files committed in `prisma/migrations`.
+If a migration fails, the workflow stops before the currently running backend
+container is shut down.
 
 ## Troubleshooting
 

@@ -22,7 +22,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        # The Docker driver uses the runner's built-in BuildKit instead of
+        # booting a separate BuildKit container from Docker Hub.
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver: docker
+
+      - name: Pull Node base image with retry
+        # Docker Hub timeouts are transient on hosted runners. Pre-pulling with
+        # retries makes the later image build use the local cached base image.
+        run: |
+          for attempt in 1 2 3; do
+            if docker pull node:24-bookworm-slim; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -58,16 +76,23 @@ jobs:
             mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
-            echo "Current directory:"
-            pwd
-            ls -la
+            # The production environment file is managed directly on the EC2
+            # host. Never create, copy, or overwrite it from GitHub Actions.
+            ENV_FILE="$DEPLOY_DIR/.env"
+            COMPOSE_FILE="$DEPLOY_DIR/docker-compose.yml"
 
-            echo "Creating .env..."
-            cat > .env <<EOF
-            ${{ secrets.ENV_FILE }}
-            EOF
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "Missing $ENV_FILE. Create it on the server before deploying."
+              exit 1
+            fi
 
-            echo ".env created successfully."
+            if [ ! -f "$COMPOSE_FILE" ]; then
+              echo "Missing $COMPOSE_FILE. Create it on the server before deploying."
+              exit 1
+            fi
+
+            # Keep credentials readable only by the deployment user.
+            chmod 600 "$ENV_FILE"
 
             echo "Logging into GHCR..."
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io \
@@ -75,13 +100,20 @@ jobs:
               --password-stdin
 
             echo "Pulling latest image..."
-            sudo docker compose pull
+            sudo docker compose --env-file "$ENV_FILE" pull
 
-            echo "Stopping old container..."
-            sudo docker compose down
+            echo "Starting PostgreSQL..."
+            sudo docker compose --env-file "$ENV_FILE" up -d db
 
-            echo "Starting new container..."
-            sudo docker compose up -d
+            # Apply committed Prisma migrations using the newly pulled image.
+            # This happens before the backend is recreated, so a failed
+            # migration leaves the currently running backend available.
+            echo "Applying database migrations..."
+            sudo docker compose --env-file "$ENV_FILE" run --rm --no-deps backend \
+              npx prisma migrate deploy
+
+            echo "Starting updated backend..."
+            sudo docker compose --env-file "$ENV_FILE" up -d --no-deps backend
 
             echo "Removing unused images..."
             sudo docker image prune -f
