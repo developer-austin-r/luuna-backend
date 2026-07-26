@@ -84,18 +84,18 @@ jobs:
             echo "Pulling latest image..."
             sudo docker compose --env-file "$ENV_FILE" pull
 
+            echo "Starting PostgreSQL..."
+            sudo docker compose --env-file "$ENV_FILE" up -d db
+
             # Apply committed Prisma migrations using the newly pulled image.
-            # This happens before the current release is stopped, so a failed
-            # migration prevents the new release from replacing a healthy one.
+            # This happens before the backend is recreated, so a failed
+            # migration leaves the currently running backend available.
             echo "Applying database migrations..."
-            sudo docker compose --env-file "$ENV_FILE" run --rm backend \
+            sudo docker compose --env-file "$ENV_FILE" run --rm --no-deps backend \
               npx prisma migrate deploy
 
-            echo "Stopping old container..."
-            sudo docker compose --env-file "$ENV_FILE" down
-
-            echo "Starting new container..."
-            sudo docker compose --env-file "$ENV_FILE" up -d
+            echo "Starting updated backend..."
+            sudo docker compose --env-file "$ENV_FILE" up -d --no-deps backend
 
             echo "Removing unused images..."
             sudo docker image prune -f
