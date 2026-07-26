@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './modules/user/user.module';
+import { ProductModule } from './modules/product/product.module';
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
 
@@ -17,6 +18,7 @@ import { validationSchema } from './common/constants';
     }),
     PrismaModule,
     UserModule,
+    ProductModule,
     HealthModule,
   ],
   controllers: [],
