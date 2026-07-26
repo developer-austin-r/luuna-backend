@@ -28,8 +28,8 @@ FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# Install dumb-init for proper signal handling and OpenSSL for Prisma.
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init openssl && rm -rf /var/lib/apt/lists/*
 
 # Copy node_modules from builder
 COPY --from=builder /app/node_modules ./node_modules
