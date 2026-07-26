@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
+const client_1 = require("@prisma/client");
 let ProductService = class ProductService {
     prisma;
     constructor(prisma) {
@@ -122,7 +123,25 @@ let ProductService = class ProductService {
         return this.serializeBigInt(product);
     }
     async create(createProductDto) {
-        const { sku, slug, brandId, categoryIds, images, videos, keywords, warehouse, stock = 0, reservedStock = 0, availableStock, ...productData } = createProductDto;
+        const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, warehouse, stock = 0, reservedStock = 0, availableStock, basePrice, discountPrice, taxPercentage = 0, rating = 0, ...productData } = createProductDto;
+        if (discountPrice !== undefined && discountPrice !== null && discountPrice > basePrice) {
+            throw new common_1.BadRequestException('Discount price must be less than or equal to base price');
+        }
+        if (reservedStock > stock) {
+            throw new common_1.BadRequestException('Reserved stock must not exceed total stock');
+        }
+        if (taxPercentage < 0 || taxPercentage > 100) {
+            throw new common_1.BadRequestException('Tax percentage must be between 0 and 100');
+        }
+        if (rating < 0 || rating > 5) {
+            throw new common_1.BadRequestException('Rating must be between 0 and 5');
+        }
+        if (images && images.length > 7) {
+            throw new common_1.BadRequestException('Enforced limit of maximum 7 images per product');
+        }
+        if (videos && videos.length > 1) {
+            throw new common_1.BadRequestException('Enforced limit of maximum 1 video per product');
+        }
         const existing = await this.prisma.product.findFirst({
             where: {
                 OR: [{ sku }, { slug }],
@@ -144,50 +163,80 @@ let ProductService = class ProductService {
                 throw new common_1.BadRequestException(`Brand with ID "${brandId}" not found`);
             }
         }
+        if (categoryIds && categoryIds.length > 0) {
+            const uniqueCategoryIds = Array.from(new Set(categoryIds));
+            const categoriesCount = await this.prisma.category.count({
+                where: {
+                    id: { in: uniqueCategoryIds },
+                    isDeleted: false,
+                },
+            });
+            if (categoriesCount !== uniqueCategoryIds.length) {
+                throw new common_1.BadRequestException('One or more category IDs are invalid or deleted');
+            }
+        }
         const calculatedAvailableStock = availableStock !== undefined ? availableStock : stock - reservedStock;
         return this.prisma.$transaction(async (tx) => {
+            let finalBrandId = brandId;
+            if (brandName && brandName.trim()) {
+                const existingBrand = await tx.brand.findFirst({
+                    where: { name: { equals: brandName.trim(), mode: 'insensitive' } },
+                });
+                if (existingBrand) {
+                    finalBrandId = existingBrand.id;
+                }
+                else {
+                    const newBrand = await tx.brand.create({
+                        data: { name: brandName.trim(), status: true },
+                    });
+                    finalBrandId = newBrand.id;
+                }
+            }
             const product = await tx.product.create({
                 data: {
                     ...productData,
                     sku,
                     slug,
-                    brandId,
+                    brandId: finalBrandId,
+                    basePrice: new client_1.Prisma.Decimal(basePrice),
+                    discountPrice: discountPrice !== undefined && discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : null,
+                    taxPercentage: new client_1.Prisma.Decimal(taxPercentage),
+                    finalPrice: discountPrice !== undefined && discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : new client_1.Prisma.Decimal(basePrice),
                     stock,
                     reservedStock,
                     availableStock: calculatedAvailableStock,
+                    rating,
                     ...(categoryIds && categoryIds.length > 0
                         ? {
                             productCategories: {
-                                createMany: {
-                                    data: categoryIds.map((catId) => ({ categoryId: catId })),
-                                },
+                                create: categoryIds.map((catId) => ({ categoryId: catId })),
                             },
                         }
                         : {}),
                     ...(images && images.length > 0
                         ? {
                             images: {
-                                createMany: {
-                                    data: images,
-                                },
+                                create: images.map((img) => ({
+                                    imageUrl: img.imageUrl,
+                                    displayOrder: img.displayOrder,
+                                })),
                             },
                         }
                         : {}),
                     ...(videos && videos.length > 0
                         ? {
                             videos: {
-                                createMany: {
-                                    data: videos,
-                                },
+                                create: videos.map((v) => ({
+                                    videoUrl: v.videoUrl,
+                                    fileSize: v.fileSize ? BigInt(v.fileSize) : null,
+                                })),
                             },
                         }
                         : {}),
                     ...(keywords && keywords.length > 0
                         ? {
                             keywords: {
-                                createMany: {
-                                    data: keywords.map((kw) => ({ keyword: kw })),
-                                },
+                                create: keywords.map((kw) => ({ keyword: kw })),
                             },
                         }
                         : {}),
@@ -218,12 +267,34 @@ let ProductService = class ProductService {
         });
     }
     async update(id, updateProductDto) {
-        const existing = await this.findOne(id);
-        const { sku, slug, brandId, categoryIds, images, videos, keywords, warehouse, ...productData } = updateProductDto;
-        void images;
-        void videos;
-        void keywords;
+        const existing = await this.prisma.product.findUnique({
+            where: { id },
+            include: {
+                images: true,
+                videos: true,
+            }
+        });
+        if (!existing || existing.deletedAt !== null) {
+            throw new common_1.NotFoundException(`Product with ID "${id}" not found`);
+        }
+        const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, warehouse, basePrice, discountPrice, taxPercentage, rating, stock, reservedStock, availableStock, ...productData } = updateProductDto;
         void warehouse;
+        const finalBasePrice = basePrice !== undefined ? basePrice : Number(existing.basePrice);
+        const finalDiscountPrice = discountPrice !== undefined ? discountPrice : (existing.discountPrice ? Number(existing.discountPrice) : undefined);
+        if (finalDiscountPrice !== undefined && finalDiscountPrice !== null && finalDiscountPrice > finalBasePrice) {
+            throw new common_1.BadRequestException('Discount price must be less than or equal to base price');
+        }
+        const finalStock = stock !== undefined ? stock : existing.stock;
+        const finalReservedStock = reservedStock !== undefined ? reservedStock : existing.reservedStock;
+        if (finalReservedStock > finalStock) {
+            throw new common_1.BadRequestException('Reserved stock must not exceed total stock');
+        }
+        if (taxPercentage !== undefined && (taxPercentage < 0 || taxPercentage > 100)) {
+            throw new common_1.BadRequestException('Tax percentage must be between 0 and 100');
+        }
+        if (rating !== undefined && (rating < 0 || rating > 5)) {
+            throw new common_1.BadRequestException('Rating must be between 0 and 5');
+        }
         if ((sku && sku !== existing.sku) || (slug && slug !== existing.slug)) {
             const conflict = await this.prisma.product.findFirst({
                 where: {
@@ -252,7 +323,44 @@ let ProductService = class ProductService {
                 throw new common_1.BadRequestException(`Brand with ID "${brandId}" not found`);
             }
         }
+        if (categoryIds && categoryIds.length > 0) {
+            const uniqueCategoryIds = Array.from(new Set(categoryIds));
+            const categoriesCount = await this.prisma.category.count({
+                where: {
+                    id: { in: uniqueCategoryIds },
+                    isDeleted: false,
+                },
+            });
+            if (categoriesCount !== uniqueCategoryIds.length) {
+                throw new common_1.BadRequestException('One or more category IDs are invalid or deleted');
+            }
+        }
+        const finalAvailableStock = availableStock !== undefined
+            ? availableStock
+            : stock !== undefined || reservedStock !== undefined
+                ? finalStock - finalReservedStock
+                : existing.availableStock;
         return this.prisma.$transaction(async (tx) => {
+            let finalBrandId = brandId;
+            if (brandName !== undefined) {
+                if (brandName && brandName.trim()) {
+                    const existingBrand = await tx.brand.findFirst({
+                        where: { name: { equals: brandName.trim(), mode: 'insensitive' } },
+                    });
+                    if (existingBrand) {
+                        finalBrandId = existingBrand.id;
+                    }
+                    else {
+                        const newBrand = await tx.brand.create({
+                            data: { name: brandName.trim(), status: true },
+                        });
+                        finalBrandId = newBrand.id;
+                    }
+                }
+                else {
+                    finalBrandId = null;
+                }
+            }
             if (categoryIds !== undefined) {
                 await tx.productCategory.deleteMany({ where: { productId: id } });
                 if (categoryIds.length > 0) {
@@ -264,24 +372,73 @@ let ProductService = class ProductService {
                     });
                 }
             }
+            if (keywords !== undefined) {
+                await tx.productKeyword.deleteMany({ where: { productId: id } });
+                if (keywords.length > 0) {
+                    await tx.productKeyword.createMany({
+                        data: keywords.map((kw) => ({
+                            productId: id,
+                            keyword: kw,
+                        })),
+                    });
+                }
+            }
+            if (images !== undefined) {
+                if (images.length > 7) {
+                    throw new common_1.BadRequestException('Enforced limit of maximum 7 images per product');
+                }
+                await tx.productImage.deleteMany({ where: { productId: id } });
+                if (images.length > 0) {
+                    await tx.productImage.createMany({
+                        data: images.map((img) => ({
+                            productId: id,
+                            imageUrl: img.imageUrl,
+                            displayOrder: img.displayOrder ?? 0,
+                        })),
+                    });
+                }
+            }
+            if (videos !== undefined) {
+                if (videos.length > 1) {
+                    throw new common_1.BadRequestException('Enforced limit of maximum 1 video per product');
+                }
+                await tx.productVideo.deleteMany({ where: { productId: id } });
+                if (videos.length > 0) {
+                    await tx.productVideo.createMany({
+                        data: videos.map((vid) => ({
+                            productId: id,
+                            videoUrl: vid.videoUrl,
+                            fileSize: vid.fileSize ? BigInt(vid.fileSize) : null,
+                        })),
+                    });
+                }
+            }
             const updated = await tx.product.update({
                 where: { id },
                 data: {
                     ...productData,
-                    ...(sku ? { sku } : {}),
-                    ...(slug ? { slug } : {}),
-                    ...(brandId !== undefined ? { brandId } : {}),
+                    sku,
+                    slug,
+                    brandId: finalBrandId !== undefined ? finalBrandId : undefined,
+                    basePrice: basePrice !== undefined ? new client_1.Prisma.Decimal(basePrice) : undefined,
+                    discountPrice: discountPrice !== undefined ? (discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : null) : undefined,
+                    taxPercentage: taxPercentage !== undefined ? new client_1.Prisma.Decimal(taxPercentage) : undefined,
+                    finalPrice: discountPrice !== undefined ? (discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : new client_1.Prisma.Decimal(finalBasePrice)) : undefined,
+                    stock: stock !== undefined ? stock : undefined,
+                    reservedStock: reservedStock !== undefined ? reservedStock : undefined,
+                    availableStock: finalAvailableStock,
+                    rating: rating !== undefined ? rating : undefined,
                 },
                 include: {
                     brand: true,
                     productCategories: { include: { category: true } },
-                    images: true,
+                    images: { orderBy: { displayOrder: 'asc' } },
                     videos: true,
                     inventories: true,
                     keywords: true,
                 },
             });
-            return updated;
+            return this.serializeBigInt(updated);
         });
     }
     async remove(id, permanent = false) {
@@ -322,6 +479,10 @@ let ProductService = class ProductService {
     }
     async addImage(productId, dto) {
         await this.findOne(productId);
+        const currentImagesCount = await this.prisma.productImage.count({ where: { productId } });
+        if (currentImagesCount >= 7) {
+            throw new common_1.BadRequestException('Enforced limit of maximum 7 images per product exceeded');
+        }
         return this.prisma.productImage.create({
             data: {
                 productId,
@@ -351,6 +512,10 @@ let ProductService = class ProductService {
     }
     async addVideo(productId, dto) {
         await this.findOne(productId);
+        const currentVideosCount = await this.prisma.productVideo.count({ where: { productId } });
+        if (currentVideosCount >= 1) {
+            throw new common_1.BadRequestException('Enforced limit of maximum 1 video per product exceeded');
+        }
         return this.prisma.productVideo.create({
             data: {
                 productId,
@@ -493,6 +658,94 @@ let ProductService = class ProductService {
             include: {
                 brand: true,
             },
+        });
+    }
+    async getCategories() {
+        return this.prisma.category.findMany({
+            where: { isDeleted: false },
+            orderBy: { name: 'asc' },
+        });
+    }
+    async getBrands() {
+        return this.prisma.brand.findMany({
+            where: { status: true },
+            orderBy: { name: 'asc' },
+        });
+    }
+    async createCategory(dto) {
+        const existing = await this.prisma.category.findUnique({
+            where: { slug: dto.slug },
+        });
+        if (existing) {
+            throw new common_1.ConflictException(`Category with Slug "${dto.slug}" already exists`);
+        }
+        if (dto.parentId) {
+            const parent = await this.prisma.category.findUnique({
+                where: { id: dto.parentId },
+            });
+            if (!parent || parent.isDeleted) {
+                throw new common_1.BadRequestException(`Parent Category with ID "${dto.parentId}" not found`);
+            }
+        }
+        return this.prisma.category.create({
+            data: {
+                name: dto.name,
+                slug: dto.slug,
+                description: dto.description,
+                parentId: dto.parentId || null,
+                image: dto.image,
+                status: dto.status !== undefined ? dto.status : true,
+            },
+        });
+    }
+    async updateCategory(id, dto) {
+        const existing = await this.prisma.category.findUnique({
+            where: { id },
+        });
+        if (!existing || existing.isDeleted) {
+            throw new common_1.NotFoundException(`Category with ID "${id}" not found`);
+        }
+        if (dto.slug && dto.slug !== existing.slug) {
+            const conflict = await this.prisma.category.findUnique({
+                where: { slug: dto.slug },
+            });
+            if (conflict) {
+                throw new common_1.ConflictException(`Category with Slug "${dto.slug}" already exists`);
+            }
+        }
+        if (dto.parentId) {
+            if (dto.parentId === id) {
+                throw new common_1.BadRequestException('A category cannot be its own parent');
+            }
+            const parent = await this.prisma.category.findUnique({
+                where: { id: dto.parentId },
+            });
+            if (!parent || parent.isDeleted) {
+                throw new common_1.BadRequestException(`Parent Category with ID "${dto.parentId}" not found`);
+            }
+        }
+        return this.prisma.category.update({
+            where: { id },
+            data: {
+                name: dto.name !== undefined ? dto.name : undefined,
+                slug: dto.slug !== undefined ? dto.slug : undefined,
+                description: dto.description !== undefined ? dto.description : undefined,
+                parentId: dto.parentId !== undefined ? (dto.parentId || null) : undefined,
+                image: dto.image !== undefined ? dto.image : undefined,
+                status: dto.status !== undefined ? dto.status : undefined,
+            },
+        });
+    }
+    async deleteCategory(id) {
+        const existing = await this.prisma.category.findUnique({
+            where: { id },
+        });
+        if (!existing || existing.isDeleted) {
+            throw new common_1.NotFoundException(`Category with ID "${id}" not found`);
+        }
+        return this.prisma.category.update({
+            where: { id },
+            data: { isDeleted: true },
         });
     }
 };

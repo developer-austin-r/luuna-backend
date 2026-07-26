@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AssignBrandDto = exports.AssignCategoriesDto = exports.UpdateInventoryDto = exports.CreateProductKeywordDto = exports.CreateProductVideoDto = exports.CreateProductImageDto = void 0;
+exports.UpdateCategoryDto = exports.CreateCategoryDto = exports.AssignBrandDto = exports.AssignCategoriesDto = exports.UpdateInventoryDto = exports.CreateProductKeywordDto = exports.CreateProductVideoDto = exports.CreateProductImageDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 class CreateProductImageDto {
@@ -109,4 +109,90 @@ __decorate([
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", Object)
 ], AssignBrandDto.prototype, "brandId", void 0);
+class CreateCategoryDto {
+    name;
+    slug;
+    description;
+    parentId;
+    image;
+    status;
+}
+exports.CreateCategoryDto = CreateCategoryDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'Electronics' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCategoryDto.prototype, "name", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'electronics' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCategoryDto.prototype, "slug", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Category for electronic devices' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCategoryDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '123e4567-e89b-12d3-a456-426614174002', nullable: true }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", Object)
+], CreateCategoryDto.prototype, "parentId", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/images/electronics.jpg' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCategoryDto.prototype, "image", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: true, default: true }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], CreateCategoryDto.prototype, "status", void 0);
+class UpdateCategoryDto {
+    name;
+    slug;
+    description;
+    parentId;
+    image;
+    status;
+}
+exports.UpdateCategoryDto = UpdateCategoryDto;
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Electronics' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateCategoryDto.prototype, "name", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'electronics' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateCategoryDto.prototype, "slug", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Category for electronic devices' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateCategoryDto.prototype, "description", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '123e4567-e89b-12d3-a456-426614174002', nullable: true }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", Object)
+], UpdateCategoryDto.prototype, "parentId", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/images/electronics.jpg' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateCategoryDto.prototype, "image", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: true, default: true }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], UpdateCategoryDto.prototype, "status", void 0);
 //# sourceMappingURL=product-sub.dto.js.map
