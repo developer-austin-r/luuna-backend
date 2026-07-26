@@ -96,12 +96,17 @@ EOF
    - Create `/home/ubuntu/luuna-backend` if it doesn't exist
    - Verify the server-managed `.env` and `docker-compose.yml` files exist
    - Pull the latest image from GHCR
+   - Run `prisma migrate deploy` using the newly pulled image
    - Start/restart containers with `docker compose --env-file .env up -d`
    - Clean up unused images with `docker image prune -f`
 
 The workflow fails safely if either server file is missing. It does not change
 the contents of `.env`; update it manually on EC2 when credentials or runtime
 settings need to change.
+
+Every deployment applies the migration files committed in `prisma/migrations`.
+If a migration fails, the workflow stops before the currently running backend
+container is shut down.
 
 ## Troubleshooting
 

@@ -84,6 +84,13 @@ jobs:
             echo "Pulling latest image..."
             sudo docker compose --env-file "$ENV_FILE" pull
 
+            # Apply committed Prisma migrations using the newly pulled image.
+            # This happens before the current release is stopped, so a failed
+            # migration prevents the new release from replacing a healthy one.
+            echo "Applying database migrations..."
+            sudo docker compose --env-file "$ENV_FILE" run --rm backend \
+              npx prisma migrate deploy
+
             echo "Stopping old container..."
             sudo docker compose --env-file "$ENV_FILE" down
 
