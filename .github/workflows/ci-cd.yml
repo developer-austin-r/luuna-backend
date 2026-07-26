@@ -58,16 +58,23 @@ jobs:
             mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
-            echo "Current directory:"
-            pwd
-            ls -la
+            # The production environment file is managed directly on the EC2
+            # host. Never create, copy, or overwrite it from GitHub Actions.
+            ENV_FILE="$DEPLOY_DIR/.env"
+            COMPOSE_FILE="$DEPLOY_DIR/docker-compose.yml"
 
-            echo "Creating .env..."
-            cat > .env <<EOF
-            ${{ secrets.ENV_FILE }}
-            EOF
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "Missing $ENV_FILE. Create it on the server before deploying."
+              exit 1
+            fi
 
-            echo ".env created successfully."
+            if [ ! -f "$COMPOSE_FILE" ]; then
+              echo "Missing $COMPOSE_FILE. Create it on the server before deploying."
+              exit 1
+            fi
+
+            # Keep credentials readable only by the deployment user.
+            chmod 600 "$ENV_FILE"
 
             echo "Logging into GHCR..."
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io \
@@ -75,13 +82,20 @@ jobs:
               --password-stdin
 
             echo "Pulling latest image..."
-            sudo docker compose pull
+            sudo docker compose --env-file "$ENV_FILE" pull
+
+            # Apply committed Prisma migrations using the newly pulled image.
+            # This happens before the current release is stopped, so a failed
+            # migration prevents the new release from replacing a healthy one.
+            echo "Applying database migrations..."
+            sudo docker compose --env-file "$ENV_FILE" run --rm backend \
+              npx prisma migrate deploy
 
             echo "Stopping old container..."
-            sudo docker compose down
+            sudo docker compose --env-file "$ENV_FILE" down
 
             echo "Starting new container..."
-            sudo docker compose up -d
+            sudo docker compose --env-file "$ENV_FILE" up -d
 
             echo "Removing unused images..."
             sudo docker image prune -f

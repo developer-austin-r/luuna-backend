@@ -8,6 +8,10 @@
   - `EC2_HOST`: Your EC2 instance IP or domain
   - `EC2_USERNAME`: SSH username (typically `ubuntu`)
   - `EC2_SSH_KEY`: Your private SSH key for EC2
+  - `GHCR_PAT`: Token with permission to pull the container image
+
+The production `.env` file is kept only on the EC2 server. It is not stored in
+GitHub Actions secrets and the deployment workflow never replaces it.
 
 ## EC2 Setup Steps
 
@@ -37,6 +41,8 @@ DB_USER=username
 DB_PASSWORD=password
 DB_SCHEMA=public
 EOF
+
+chmod 600 /home/ubuntu/luuna-backend/.env
 ```
 
 **Important:** Replace the database credentials with your actual PostgreSQL connection details.
@@ -88,11 +94,19 @@ EOF
    - `ghcr.io/developer-austin-r/luuna-backend:sha-<commit-hash>`
 3. **Deploy**: SSH into EC2 and:
    - Create `/home/ubuntu/luuna-backend` if it doesn't exist
-   - Verify `.env` file exists
-   - Generate `docker-compose.yml` if it doesn't exist
+   - Verify the server-managed `.env` and `docker-compose.yml` files exist
    - Pull the latest image from GHCR
-   - Start/restart containers with `docker compose up -d`
+   - Run `prisma migrate deploy` using the newly pulled image
+   - Start/restart containers with `docker compose --env-file .env up -d`
    - Clean up unused images with `docker image prune -f`
+
+The workflow fails safely if either server file is missing. It does not change
+the contents of `.env`; update it manually on EC2 when credentials or runtime
+settings need to change.
+
+Every deployment applies the migration files committed in `prisma/migrations`.
+If a migration fails, the workflow stops before the currently running backend
+container is shut down.
 
 ## Troubleshooting
 
