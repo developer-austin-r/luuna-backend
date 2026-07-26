@@ -7,6 +7,8 @@ import {
   IsString,
   IsUUID,
   Min,
+  Max,
+  ArrayMaxSize,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -65,6 +67,11 @@ export class CreateProductDto {
   @IsUUID()
   brandId?: string;
 
+  @ApiPropertyOptional({ example: 'Nike' })
+  @IsOptional()
+  @IsString()
+  brandName?: string;
+
   @ApiProperty({ example: 199.99 })
   @IsNumber()
   @Min(0)
@@ -80,6 +87,7 @@ export class CreateProductDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  @Max(100)
   taxPercentage?: number;
 
   @ApiProperty({ example: 176.99 })
@@ -108,6 +116,8 @@ export class CreateProductDto {
   @ApiPropertyOptional({ example: 4.5, default: 0 })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(5)
   rating?: number;
 
   @ApiPropertyOptional({ example: false, default: false })
@@ -129,6 +139,7 @@ export class CreateProductDto {
   @ApiPropertyOptional({ type: [CreateProductImageItemDto] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(7)
   @ValidateNested({ each: true })
   @Type(() => CreateProductImageItemDto)
   images?: CreateProductImageItemDto[];
@@ -136,6 +147,7 @@ export class CreateProductDto {
   @ApiPropertyOptional({ type: [CreateProductVideoItemDto] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(1)
   @ValidateNested({ each: true })
   @Type(() => CreateProductVideoItemDto)
   videos?: CreateProductVideoItemDto[];

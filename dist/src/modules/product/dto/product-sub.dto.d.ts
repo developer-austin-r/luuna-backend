@@ -21,3 +21,19 @@ export declare class AssignCategoriesDto {
 export declare class AssignBrandDto {
     brandId?: string | null;
 }
+export declare class CreateCategoryDto {
+    name: string;
+    slug: string;
+    description?: string;
+    parentId?: string | null;
+    image?: string;
+    status?: boolean;
+}
+export declare class UpdateCategoryDto {
+    name?: string;
+    slug?: string;
+    description?: string;
+    parentId?: string | null;
+    image?: string;
+    status?: boolean;
+}

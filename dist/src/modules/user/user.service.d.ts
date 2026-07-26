@@ -6,38 +6,38 @@ export declare class UserService {
     constructor(prisma: PrismaService);
     private readonly userSelect;
     create(createUserDto: CreateUserDto): Promise<{
-        email: string;
-        name: string | null;
         id: string;
+        name: string | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
     }>;
     findAll(): import("@prisma/client").Prisma.PrismaPromise<{
-        email: string;
-        name: string | null;
         id: string;
+        name: string | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
     }[]>;
     findOne(id: string): Promise<{
-        email: string;
-        name: string | null;
         id: string;
+        name: string | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
     }>;
     update(id: string, updateUserDto: UpdateUserDto): Promise<{
-        email: string;
-        name: string | null;
         id: string;
+        name: string | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
     }>;
     remove(id: string): Promise<{
-        email: string;
-        name: string | null;
         id: string;
+        name: string | null;
         createdAt: Date;
         updatedAt: Date;
+        email: string;
     }>;
 }

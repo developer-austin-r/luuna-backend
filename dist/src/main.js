@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
 const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const config_1 = require("@nestjs/config");
@@ -21,6 +22,8 @@ async function bootstrap() {
     });
     const configService = app.get(config_1.ConfigService);
     const prismaService = app.get(prisma_service_1.PrismaService);
+    app.use((0, express_1.json)({ limit: '50mb' }));
+    app.use((0, express_1.urlencoded)({ limit: '50mb', extended: true }));
     app.enableCors({
         origin: configService.get('CORS_ORIGIN') || true,
         credentials: true,

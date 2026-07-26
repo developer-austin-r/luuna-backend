@@ -13,6 +13,7 @@ export declare class CreateProductDto {
     shortDescription?: string;
     description?: string;
     brandId?: string;
+    brandName?: string;
     basePrice: number;
     discountPrice?: number;
     taxPercentage?: number;

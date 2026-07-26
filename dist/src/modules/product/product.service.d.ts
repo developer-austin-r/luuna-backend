@@ -1,5 +1,5 @@
 import { PrismaService } from '../../prisma/prisma.service';
-import { AssignBrandDto, AssignCategoriesDto, CreateProductDto, CreateProductImageDto, CreateProductKeywordDto, CreateProductVideoDto, ProductQueryDto, UpdateInventoryDto, UpdateProductDto } from './dto';
+import { AssignBrandDto, AssignCategoriesDto, CreateProductDto, CreateProductImageDto, CreateProductKeywordDto, CreateProductVideoDto, ProductQueryDto, UpdateInventoryDto, UpdateProductDto, CreateCategoryDto, UpdateCategoryDto } from './dto';
 import { Prisma } from '@prisma/client';
 export declare class ProductService {
     private readonly prisma;
@@ -8,11 +8,29 @@ export declare class ProductService {
     findAll(query: ProductQueryDto): Promise<{
         data: ({
             brand: {
-                name: string;
                 id: string;
-                status: boolean;
+                name: string;
                 logo: string | null;
+                status: boolean;
             } | null;
+            productCategories: ({
+                category: {
+                    id: string;
+                    name: string;
+                    status: boolean;
+                    slug: string;
+                    parentId: string | null;
+                    image: string | null;
+                    description: string | null;
+                    isDeleted: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            } & {
+                id: string;
+                categoryId: string;
+                productId: string;
+            })[];
             images: {
                 id: string;
                 imageUrl: string;
@@ -30,24 +48,6 @@ export declare class ProductService {
                 keyword: string;
                 productId: string;
             }[];
-            productCategories: ({
-                category: {
-                    description: string | null;
-                    name: string;
-                    id: string;
-                    createdAt: Date;
-                    updatedAt: Date;
-                    status: boolean;
-                    slug: string;
-                    parentId: string | null;
-                    image: string | null;
-                    isDeleted: boolean;
-                };
-            } & {
-                id: string;
-                categoryId: string;
-                productId: string;
-            })[];
             inventories: {
                 id: string;
                 reservedStock: number;
@@ -58,14 +58,14 @@ export declare class ProductService {
                 lastSync: Date | null;
             }[];
         } & {
-            description: string | null;
-            name: string;
             id: string;
+            name: string;
+            status: boolean;
+            slug: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            status: boolean;
             sku: string;
-            slug: string;
             shortDescription: string | null;
             brandId: string | null;
             basePrice: Prisma.Decimal;
@@ -90,11 +90,29 @@ export declare class ProductService {
     }>;
     findOne(id: string): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
+        productCategories: ({
+            category: {
+                id: string;
+                name: string;
+                status: boolean;
+                slug: string;
+                parentId: string | null;
+                image: string | null;
+                description: string | null;
+                isDeleted: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+        } & {
+            id: string;
+            categoryId: string;
+            productId: string;
+        })[];
         images: {
             id: string;
             imageUrl: string;
@@ -112,24 +130,6 @@ export declare class ProductService {
             keyword: string;
             productId: string;
         }[];
-        productCategories: ({
-            category: {
-                description: string | null;
-                name: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: boolean;
-                slug: string;
-                parentId: string | null;
-                image: string | null;
-                isDeleted: boolean;
-            };
-        } & {
-            id: string;
-            categoryId: string;
-            productId: string;
-        })[];
         inventories: {
             id: string;
             reservedStock: number;
@@ -140,14 +140,14 @@ export declare class ProductService {
             lastSync: Date | null;
         }[];
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: Prisma.Decimal;
@@ -163,11 +163,29 @@ export declare class ProductService {
     }>;
     create(createProductDto: CreateProductDto): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
+        productCategories: ({
+            category: {
+                id: string;
+                name: string;
+                status: boolean;
+                slug: string;
+                parentId: string | null;
+                image: string | null;
+                description: string | null;
+                isDeleted: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+        } & {
+            id: string;
+            categoryId: string;
+            productId: string;
+        })[];
         images: {
             id: string;
             imageUrl: string;
@@ -185,24 +203,6 @@ export declare class ProductService {
             keyword: string;
             productId: string;
         }[];
-        productCategories: ({
-            category: {
-                description: string | null;
-                name: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: boolean;
-                slug: string;
-                parentId: string | null;
-                image: string | null;
-                isDeleted: boolean;
-            };
-        } & {
-            id: string;
-            categoryId: string;
-            productId: string;
-        })[];
         inventories: {
             id: string;
             reservedStock: number;
@@ -213,14 +213,14 @@ export declare class ProductService {
             lastSync: Date | null;
         }[];
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: Prisma.Decimal;
@@ -236,11 +236,29 @@ export declare class ProductService {
     }>;
     update(id: string, updateProductDto: UpdateProductDto): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
+        productCategories: ({
+            category: {
+                id: string;
+                name: string;
+                status: boolean;
+                slug: string;
+                parentId: string | null;
+                image: string | null;
+                description: string | null;
+                isDeleted: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+        } & {
+            id: string;
+            categoryId: string;
+            productId: string;
+        })[];
         images: {
             id: string;
             imageUrl: string;
@@ -258,24 +276,6 @@ export declare class ProductService {
             keyword: string;
             productId: string;
         }[];
-        productCategories: ({
-            category: {
-                description: string | null;
-                name: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: boolean;
-                slug: string;
-                parentId: string | null;
-                image: string | null;
-                isDeleted: boolean;
-            };
-        } & {
-            id: string;
-            categoryId: string;
-            productId: string;
-        })[];
         inventories: {
             id: string;
             reservedStock: number;
@@ -286,14 +286,14 @@ export declare class ProductService {
             lastSync: Date | null;
         }[];
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: Prisma.Decimal;
@@ -308,14 +308,14 @@ export declare class ProductService {
         deletedAt: Date | null;
     }>;
     remove(id: string, permanent?: boolean): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: Prisma.Decimal;
@@ -330,14 +330,14 @@ export declare class ProductService {
         deletedAt: Date | null;
     }>;
     archive(id: string): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: Prisma.Decimal;
@@ -352,14 +352,14 @@ export declare class ProductService {
         deletedAt: Date | null;
     }>;
     restore(id: string): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: Prisma.Decimal;
@@ -435,16 +435,16 @@ export declare class ProductService {
     }>;
     assignCategories(productId: string, dto: AssignCategoriesDto): Promise<({
         category: {
-            description: string | null;
-            name: string;
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
+            name: string;
             status: boolean;
             slug: string;
             parentId: string | null;
             image: string | null;
+            description: string | null;
             isDeleted: boolean;
+            createdAt: Date;
+            updatedAt: Date;
         };
     } & {
         id: string;
@@ -453,20 +453,20 @@ export declare class ProductService {
     })[]>;
     assignBrand(productId: string, dto: AssignBrandDto): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: Prisma.Decimal;
@@ -479,5 +479,59 @@ export declare class ProductService {
         rating: number;
         archive: boolean;
         deletedAt: Date | null;
+    }>;
+    getCategories(): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    getBrands(): Promise<{
+        id: string;
+        name: string;
+        logo: string | null;
+        status: boolean;
+    }[]>;
+    createCategory(dto: CreateCategoryDto): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    updateCategory(id: string, dto: UpdateCategoryDto): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    deleteCategory(id: string): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
 }
