@@ -135,13 +135,18 @@ __decorate([
     __metadata("design:type", String)
 ], CreateCategoryDto.prototype, "description", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: '123e4567-e89b-12d3-a456-426614174002', nullable: true }),
+    (0, swagger_1.ApiPropertyOptional)({
+        example: '123e4567-e89b-12d3-a456-426614174002',
+        nullable: true,
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", Object)
 ], CreateCategoryDto.prototype, "parentId", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/images/electronics.jpg' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        example: 'https://example.com/images/electronics.jpg',
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
@@ -179,13 +184,18 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateCategoryDto.prototype, "description", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: '123e4567-e89b-12d3-a456-426614174002', nullable: true }),
+    (0, swagger_1.ApiPropertyOptional)({
+        example: '123e4567-e89b-12d3-a456-426614174002',
+        nullable: true,
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", Object)
 ], UpdateCategoryDto.prototype, "parentId", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/images/electronics.jpg' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        example: 'https://example.com/images/electronics.jpg',
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)

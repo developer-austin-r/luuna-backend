@@ -111,7 +111,9 @@ __decorate([
 ], ProductController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('categories/all'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get all active categories for product assignments' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all active categories for product assignments',
+    }),
     (0, swagger_1.ApiResponse)({
         status: common_1.HttpStatus.OK,
         description: 'Categories fetched successfully.',

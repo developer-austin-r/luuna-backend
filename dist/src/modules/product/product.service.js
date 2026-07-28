@@ -124,7 +124,9 @@ let ProductService = class ProductService {
     }
     async create(createProductDto) {
         const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, warehouse, stock = 0, reservedStock = 0, availableStock, basePrice, discountPrice, taxPercentage = 0, rating = 0, ...productData } = createProductDto;
-        if (discountPrice !== undefined && discountPrice !== null && discountPrice > basePrice) {
+        if (discountPrice !== undefined &&
+            discountPrice !== null &&
+            discountPrice > basePrice) {
             throw new common_1.BadRequestException('Discount price must be less than or equal to base price');
         }
         if (reservedStock > stock) {
@@ -199,9 +201,13 @@ let ProductService = class ProductService {
                     slug,
                     brandId: finalBrandId,
                     basePrice: new client_1.Prisma.Decimal(basePrice),
-                    discountPrice: discountPrice !== undefined && discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : null,
+                    discountPrice: discountPrice !== undefined && discountPrice !== null
+                        ? new client_1.Prisma.Decimal(discountPrice)
+                        : null,
                     taxPercentage: new client_1.Prisma.Decimal(taxPercentage),
-                    finalPrice: discountPrice !== undefined && discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : new client_1.Prisma.Decimal(basePrice),
+                    finalPrice: discountPrice !== undefined && discountPrice !== null
+                        ? new client_1.Prisma.Decimal(discountPrice)
+                        : new client_1.Prisma.Decimal(basePrice),
                     stock,
                     reservedStock,
                     availableStock: calculatedAvailableStock,
@@ -272,7 +278,7 @@ let ProductService = class ProductService {
             include: {
                 images: true,
                 videos: true,
-            }
+            },
         });
         if (!existing || existing.deletedAt !== null) {
             throw new common_1.NotFoundException(`Product with ID "${id}" not found`);
@@ -280,8 +286,14 @@ let ProductService = class ProductService {
         const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, warehouse, basePrice, discountPrice, taxPercentage, rating, stock, reservedStock, availableStock, ...productData } = updateProductDto;
         void warehouse;
         const finalBasePrice = basePrice !== undefined ? basePrice : Number(existing.basePrice);
-        const finalDiscountPrice = discountPrice !== undefined ? discountPrice : (existing.discountPrice ? Number(existing.discountPrice) : undefined);
-        if (finalDiscountPrice !== undefined && finalDiscountPrice !== null && finalDiscountPrice > finalBasePrice) {
+        const finalDiscountPrice = discountPrice !== undefined
+            ? discountPrice
+            : existing.discountPrice
+                ? Number(existing.discountPrice)
+                : undefined;
+        if (finalDiscountPrice !== undefined &&
+            finalDiscountPrice !== null &&
+            finalDiscountPrice > finalBasePrice) {
             throw new common_1.BadRequestException('Discount price must be less than or equal to base price');
         }
         const finalStock = stock !== undefined ? stock : existing.stock;
@@ -289,7 +301,8 @@ let ProductService = class ProductService {
         if (finalReservedStock > finalStock) {
             throw new common_1.BadRequestException('Reserved stock must not exceed total stock');
         }
-        if (taxPercentage !== undefined && (taxPercentage < 0 || taxPercentage > 100)) {
+        if (taxPercentage !== undefined &&
+            (taxPercentage < 0 || taxPercentage > 100)) {
             throw new common_1.BadRequestException('Tax percentage must be between 0 and 100');
         }
         if (rating !== undefined && (rating < 0 || rating > 5)) {
@@ -421,9 +434,19 @@ let ProductService = class ProductService {
                     slug,
                     brandId: finalBrandId !== undefined ? finalBrandId : undefined,
                     basePrice: basePrice !== undefined ? new client_1.Prisma.Decimal(basePrice) : undefined,
-                    discountPrice: discountPrice !== undefined ? (discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : null) : undefined,
-                    taxPercentage: taxPercentage !== undefined ? new client_1.Prisma.Decimal(taxPercentage) : undefined,
-                    finalPrice: discountPrice !== undefined ? (discountPrice !== null ? new client_1.Prisma.Decimal(discountPrice) : new client_1.Prisma.Decimal(finalBasePrice)) : undefined,
+                    discountPrice: discountPrice !== undefined
+                        ? discountPrice !== null
+                            ? new client_1.Prisma.Decimal(discountPrice)
+                            : null
+                        : undefined,
+                    taxPercentage: taxPercentage !== undefined
+                        ? new client_1.Prisma.Decimal(taxPercentage)
+                        : undefined,
+                    finalPrice: discountPrice !== undefined
+                        ? discountPrice !== null
+                            ? new client_1.Prisma.Decimal(discountPrice)
+                            : new client_1.Prisma.Decimal(finalBasePrice)
+                        : undefined,
                     stock: stock !== undefined ? stock : undefined,
                     reservedStock: reservedStock !== undefined ? reservedStock : undefined,
                     availableStock: finalAvailableStock,
@@ -479,7 +502,9 @@ let ProductService = class ProductService {
     }
     async addImage(productId, dto) {
         await this.findOne(productId);
-        const currentImagesCount = await this.prisma.productImage.count({ where: { productId } });
+        const currentImagesCount = await this.prisma.productImage.count({
+            where: { productId },
+        });
         if (currentImagesCount >= 7) {
             throw new common_1.BadRequestException('Enforced limit of maximum 7 images per product exceeded');
         }
@@ -512,7 +537,9 @@ let ProductService = class ProductService {
     }
     async addVideo(productId, dto) {
         await this.findOne(productId);
-        const currentVideosCount = await this.prisma.productVideo.count({ where: { productId } });
+        const currentVideosCount = await this.prisma.productVideo.count({
+            where: { productId },
+        });
         if (currentVideosCount >= 1) {
             throw new common_1.BadRequestException('Enforced limit of maximum 1 video per product exceeded');
         }
@@ -730,7 +757,7 @@ let ProductService = class ProductService {
                 name: dto.name !== undefined ? dto.name : undefined,
                 slug: dto.slug !== undefined ? dto.slug : undefined,
                 description: dto.description !== undefined ? dto.description : undefined,
-                parentId: dto.parentId !== undefined ? (dto.parentId || null) : undefined,
+                parentId: dto.parentId !== undefined ? dto.parentId || null : undefined,
                 image: dto.image !== undefined ? dto.image : undefined,
                 status: dto.status !== undefined ? dto.status : undefined,
             },
