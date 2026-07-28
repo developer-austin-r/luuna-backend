@@ -30,6 +30,8 @@ import {
   ProductQueryDto,
   UpdateInventoryDto,
   UpdateProductDto,
+  CreateCategoryDto,
+  UpdateCategoryDto,
 } from './dto';
 
 @ApiTags('Products')
@@ -45,6 +47,64 @@ export class ProductController {
   })
   async findAll(@Query() query: ProductQueryDto) {
     return this.productService.findAll(query);
+  }
+
+  @Get('categories/all')
+  @ApiOperation({
+    summary: 'Get all active categories for product assignments',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Categories fetched successfully.',
+  })
+  async getCategories() {
+    return this.productService.getCategories();
+  }
+
+  @Get('brands/all')
+  @ApiOperation({ summary: 'Get all active brands for product assignments' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Brands fetched successfully.',
+  })
+  async getBrands() {
+    return this.productService.getBrands();
+  }
+
+  @Post('categories')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new product category' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Category created successfully.',
+  })
+  async createCategory(@Body() dto: CreateCategoryDto) {
+    return this.productService.createCategory(dto);
+  }
+
+  @Patch('categories/:id')
+  @ApiOperation({ summary: 'Update category details' })
+  @ApiParam({ name: 'id', description: 'Category UUID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Category updated successfully.',
+  })
+  async updateCategory(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCategoryDto,
+  ) {
+    return this.productService.updateCategory(id, dto);
+  }
+
+  @Delete('categories/:id')
+  @ApiOperation({ summary: 'Delete a category' })
+  @ApiParam({ name: 'id', description: 'Category UUID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Category deleted successfully.',
+  })
+  async deleteCategory(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productService.deleteCategory(id);
   }
 
   @Get(':id')

@@ -1,16 +1,34 @@
 import { ProductService } from './product.service';
-import { AssignBrandDto, AssignCategoriesDto, CreateProductDto, CreateProductImageDto, CreateProductKeywordDto, CreateProductVideoDto, ProductQueryDto, UpdateInventoryDto, UpdateProductDto } from './dto';
+import { AssignBrandDto, AssignCategoriesDto, CreateProductDto, CreateProductImageDto, CreateProductKeywordDto, CreateProductVideoDto, ProductQueryDto, UpdateInventoryDto, UpdateProductDto, CreateCategoryDto, UpdateCategoryDto } from './dto';
 export declare class ProductController {
     private readonly productService;
     constructor(productService: ProductService);
     findAll(query: ProductQueryDto): Promise<{
         data: ({
             brand: {
-                name: string;
                 id: string;
-                status: boolean;
+                name: string;
                 logo: string | null;
+                status: boolean;
             } | null;
+            productCategories: ({
+                category: {
+                    id: string;
+                    name: string;
+                    status: boolean;
+                    slug: string;
+                    parentId: string | null;
+                    image: string | null;
+                    description: string | null;
+                    isDeleted: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            } & {
+                id: string;
+                categoryId: string;
+                productId: string;
+            })[];
             images: {
                 id: string;
                 imageUrl: string;
@@ -28,24 +46,6 @@ export declare class ProductController {
                 keyword: string;
                 productId: string;
             }[];
-            productCategories: ({
-                category: {
-                    description: string | null;
-                    name: string;
-                    id: string;
-                    createdAt: Date;
-                    updatedAt: Date;
-                    status: boolean;
-                    slug: string;
-                    parentId: string | null;
-                    image: string | null;
-                    isDeleted: boolean;
-                };
-            } & {
-                id: string;
-                categoryId: string;
-                productId: string;
-            })[];
             inventories: {
                 id: string;
                 reservedStock: number;
@@ -56,14 +56,14 @@ export declare class ProductController {
                 lastSync: Date | null;
             }[];
         } & {
-            description: string | null;
-            name: string;
             id: string;
+            name: string;
+            status: boolean;
+            slug: string;
+            description: string | null;
             createdAt: Date;
             updatedAt: Date;
-            status: boolean;
             sku: string;
-            slug: string;
             shortDescription: string | null;
             brandId: string | null;
             basePrice: import("@prisma/client-runtime-utils").Decimal;
@@ -86,13 +86,85 @@ export declare class ProductController {
             hasPreviousPage: boolean;
         };
     }>;
+    getCategories(): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    getBrands(): Promise<{
+        id: string;
+        name: string;
+        logo: string | null;
+        status: boolean;
+    }[]>;
+    createCategory(dto: CreateCategoryDto): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    updateCategory(id: string, dto: UpdateCategoryDto): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    deleteCategory(id: string): Promise<{
+        id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        parentId: string | null;
+        image: string | null;
+        description: string | null;
+        isDeleted: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
     findOne(id: string): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
+        productCategories: ({
+            category: {
+                id: string;
+                name: string;
+                status: boolean;
+                slug: string;
+                parentId: string | null;
+                image: string | null;
+                description: string | null;
+                isDeleted: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+        } & {
+            id: string;
+            categoryId: string;
+            productId: string;
+        })[];
         images: {
             id: string;
             imageUrl: string;
@@ -110,24 +182,6 @@ export declare class ProductController {
             keyword: string;
             productId: string;
         }[];
-        productCategories: ({
-            category: {
-                description: string | null;
-                name: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: boolean;
-                slug: string;
-                parentId: string | null;
-                image: string | null;
-                isDeleted: boolean;
-            };
-        } & {
-            id: string;
-            categoryId: string;
-            productId: string;
-        })[];
         inventories: {
             id: string;
             reservedStock: number;
@@ -138,14 +192,14 @@ export declare class ProductController {
             lastSync: Date | null;
         }[];
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
@@ -161,11 +215,29 @@ export declare class ProductController {
     }>;
     create(createProductDto: CreateProductDto): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
+        productCategories: ({
+            category: {
+                id: string;
+                name: string;
+                status: boolean;
+                slug: string;
+                parentId: string | null;
+                image: string | null;
+                description: string | null;
+                isDeleted: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+        } & {
+            id: string;
+            categoryId: string;
+            productId: string;
+        })[];
         images: {
             id: string;
             imageUrl: string;
@@ -183,24 +255,6 @@ export declare class ProductController {
             keyword: string;
             productId: string;
         }[];
-        productCategories: ({
-            category: {
-                description: string | null;
-                name: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: boolean;
-                slug: string;
-                parentId: string | null;
-                image: string | null;
-                isDeleted: boolean;
-            };
-        } & {
-            id: string;
-            categoryId: string;
-            productId: string;
-        })[];
         inventories: {
             id: string;
             reservedStock: number;
@@ -211,14 +265,14 @@ export declare class ProductController {
             lastSync: Date | null;
         }[];
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
@@ -234,11 +288,29 @@ export declare class ProductController {
     }>;
     update(id: string, updateProductDto: UpdateProductDto): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
+        productCategories: ({
+            category: {
+                id: string;
+                name: string;
+                status: boolean;
+                slug: string;
+                parentId: string | null;
+                image: string | null;
+                description: string | null;
+                isDeleted: boolean;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+        } & {
+            id: string;
+            categoryId: string;
+            productId: string;
+        })[];
         images: {
             id: string;
             imageUrl: string;
@@ -256,24 +328,6 @@ export declare class ProductController {
             keyword: string;
             productId: string;
         }[];
-        productCategories: ({
-            category: {
-                description: string | null;
-                name: string;
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                status: boolean;
-                slug: string;
-                parentId: string | null;
-                image: string | null;
-                isDeleted: boolean;
-            };
-        } & {
-            id: string;
-            categoryId: string;
-            productId: string;
-        })[];
         inventories: {
             id: string;
             reservedStock: number;
@@ -284,14 +338,14 @@ export declare class ProductController {
             lastSync: Date | null;
         }[];
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
@@ -306,14 +360,14 @@ export declare class ProductController {
         deletedAt: Date | null;
     }>;
     remove(id: string, permanent?: string): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
@@ -328,14 +382,14 @@ export declare class ProductController {
         deletedAt: Date | null;
     }>;
     archive(id: string): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
@@ -350,14 +404,14 @@ export declare class ProductController {
         deletedAt: Date | null;
     }>;
     restore(id: string): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;
@@ -433,16 +487,16 @@ export declare class ProductController {
     }>;
     assignCategories(id: string, dto: AssignCategoriesDto): Promise<({
         category: {
-            description: string | null;
-            name: string;
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
+            name: string;
             status: boolean;
             slug: string;
             parentId: string | null;
             image: string | null;
+            description: string | null;
             isDeleted: boolean;
+            createdAt: Date;
+            updatedAt: Date;
         };
     } & {
         id: string;
@@ -451,20 +505,20 @@ export declare class ProductController {
     })[]>;
     assignBrand(id: string, dto: AssignBrandDto): Promise<{
         brand: {
-            name: string;
             id: string;
-            status: boolean;
+            name: string;
             logo: string | null;
+            status: boolean;
         } | null;
     } & {
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
+        status: boolean;
+        slug: string;
+        description: string | null;
         createdAt: Date;
         updatedAt: Date;
-        status: boolean;
         sku: string;
-        slug: string;
         shortDescription: string | null;
         brandId: string | null;
         basePrice: import("@prisma/client-runtime-utils").Decimal;

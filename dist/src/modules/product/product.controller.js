@@ -25,6 +25,21 @@ let ProductController = class ProductController {
     async findAll(query) {
         return this.productService.findAll(query);
     }
+    async getCategories() {
+        return this.productService.getCategories();
+    }
+    async getBrands() {
+        return this.productService.getBrands();
+    }
+    async createCategory(dto) {
+        return this.productService.createCategory(dto);
+    }
+    async updateCategory(id, dto) {
+        return this.productService.updateCategory(id, dto);
+    }
+    async deleteCategory(id) {
+        return this.productService.deleteCategory(id);
+    }
     async findOne(id) {
         return this.productService.findOne(id);
     }
@@ -94,6 +109,70 @@ __decorate([
     __metadata("design:paramtypes", [dto_1.ProductQueryDto]),
     __metadata("design:returntype", Promise)
 ], ProductController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('categories/all'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all active categories for product assignments',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Categories fetched successfully.',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProductController.prototype, "getCategories", null);
+__decorate([
+    (0, common_1.Get)('brands/all'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get all active brands for product assignments' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Brands fetched successfully.',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProductController.prototype, "getBrands", null);
+__decorate([
+    (0, common_1.Post)('categories'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new product category' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.CREATED,
+        description: 'Category created successfully.',
+    }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [dto_1.CreateCategoryDto]),
+    __metadata("design:returntype", Promise)
+], ProductController.prototype, "createCategory", null);
+__decorate([
+    (0, common_1.Patch)('categories/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Update category details' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'Category UUID' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Category updated successfully.',
+    }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, dto_1.UpdateCategoryDto]),
+    __metadata("design:returntype", Promise)
+], ProductController.prototype, "updateCategory", null);
+__decorate([
+    (0, common_1.Delete)('categories/:id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete a category' }),
+    (0, swagger_1.ApiParam)({ name: 'id', description: 'Category UUID' }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Category deleted successfully.',
+    }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ProductController.prototype, "deleteCategory", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Get product details by ID' }),

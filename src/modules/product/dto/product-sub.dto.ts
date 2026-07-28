@@ -77,3 +77,73 @@ export class AssignBrandDto {
   @IsUUID()
   brandId?: string | null;
 }
+
+export class CreateCategoryDto {
+  @ApiProperty({ example: 'Electronics' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 'electronics' })
+  @IsString()
+  slug: string;
+
+  @ApiPropertyOptional({ example: 'Category for electronic devices' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({
+    example: '123e4567-e89b-12d3-a456-426614174002',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  parentId?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'https://example.com/images/electronics.jpg',
+  })
+  @IsOptional()
+  @IsString()
+  image?: string;
+
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsOptional()
+  status?: boolean;
+}
+
+export class UpdateCategoryDto {
+  @ApiPropertyOptional({ example: 'Electronics' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({ example: 'electronics' })
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @ApiPropertyOptional({ example: 'Category for electronic devices' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({
+    example: '123e4567-e89b-12d3-a456-426614174002',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  parentId?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'https://example.com/images/electronics.jpg',
+  })
+  @IsOptional()
+  @IsString()
+  image?: string;
+
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsOptional()
+  status?: boolean;
+}

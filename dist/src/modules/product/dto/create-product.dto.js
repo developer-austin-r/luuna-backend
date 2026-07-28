@@ -53,6 +53,7 @@ class CreateProductDto {
     shortDescription;
     description;
     brandId;
+    brandName;
     basePrice;
     discountPrice;
     taxPercentage;
@@ -106,6 +107,12 @@ __decorate([
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "brandId", void 0);
 __decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Nike' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "brandName", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: 199.99 }),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
@@ -123,6 +130,7 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
 ], CreateProductDto.prototype, "taxPercentage", void 0);
 __decorate([
@@ -156,6 +164,8 @@ __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 4.5, default: 0 }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(5),
     __metadata("design:type", Number)
 ], CreateProductDto.prototype, "rating", void 0);
 __decorate([
@@ -181,6 +191,7 @@ __decorate([
     (0, swagger_1.ApiPropertyOptional)({ type: [CreateProductImageItemDto] }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMaxSize)(7),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => CreateProductImageItemDto),
     __metadata("design:type", Array)
@@ -189,6 +200,7 @@ __decorate([
     (0, swagger_1.ApiPropertyOptional)({ type: [CreateProductVideoItemDto] }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMaxSize)(1),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => CreateProductVideoItemDto),
     __metadata("design:type", Array)

@@ -28,8 +28,8 @@ FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# Install dumb-init for proper signal handling and OpenSSL for Prisma.
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init openssl && rm -rf /var/lib/apt/lists/*
 
 # Copy node_modules from builder
 COPY --from=builder /app/node_modules ./node_modules
@@ -42,6 +42,8 @@ COPY --from=builder /app/dist ./dist
 
 # Copy Prisma files for runtime
 COPY --from=builder /app/prisma ./prisma
+# Needed by the deployment workflow's `prisma migrate deploy` command.
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 # Create app user for security (Debian syntax)
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -s /sbin/nologin nestjs
