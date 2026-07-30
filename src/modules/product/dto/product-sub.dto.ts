@@ -55,10 +55,6 @@ export class UpdateInventoryDto {
   @IsInt()
   @Min(0)
   availableStock?: number;
-
-  @ApiProperty({ example: 'Main Warehouse' })
-  @IsString()
-  warehouse: string;
 }
 
 export class AssignCategoriesDto {

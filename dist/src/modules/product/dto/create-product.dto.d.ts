@@ -22,11 +22,9 @@ export declare class CreateProductDto {
     reservedStock?: number;
     availableStock?: number;
     rating?: number;
-    archive?: boolean;
-    status?: boolean;
+    statusId: string;
     categoryIds?: string[];
     images?: CreateProductImageItemDto[];
     videos?: CreateProductVideoItemDto[];
     keywords?: string[];
-    warehouse?: string;
 }

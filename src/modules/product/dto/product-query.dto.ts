@@ -55,17 +55,10 @@ export class ProductQueryDto {
   @IsUUID()
   categoryId?: string;
 
-  @ApiPropertyOptional({ example: true })
+  @ApiPropertyOptional({ example: '11111111-1111-4111-a111-111111111111' })
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  status?: boolean;
-
-  @ApiPropertyOptional({ example: false })
-  @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  archive?: boolean;
+  @IsUUID()
+  statusId?: string;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()
