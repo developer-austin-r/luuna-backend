@@ -47,8 +47,7 @@ export class ProductService {
       search,
       brandId,
       categoryId,
-      status,
-      archive,
+      statusId,
       includeDeleted = false,
       minPrice,
       maxPrice,
@@ -60,8 +59,7 @@ export class ProductService {
 
     const where: Prisma.ProductWhereInput = {
       ...(includeDeleted ? {} : { deletedAt: null }),
-      ...(status !== undefined ? { status } : {}),
-      ...(archive !== undefined ? { archive } : {}),
+      ...(statusId ? { statusId } : {}),
       ...(brandId ? { brandId } : {}),
       ...(categoryId
         ? {
@@ -100,6 +98,7 @@ export class ProductService {
         orderBy: { [sortBy]: sortOrder },
         include: {
           brand: true,
+          status: true,
           productCategories: {
             include: {
               category: true,
@@ -138,6 +137,7 @@ export class ProductService {
       where: { id },
       include: {
         brand: true,
+        status: true,
         productCategories: {
           include: {
             category: true,
@@ -172,7 +172,6 @@ export class ProductService {
       images,
       videos,
       keywords,
-      warehouse,
       stock = 0,
       reservedStock = 0,
       availableStock,
@@ -338,15 +337,13 @@ export class ProductService {
                 },
               }
             : {}),
-          ...(warehouse || stock > 0
+          ...(stock > 0
             ? {
                 inventories: {
                   create: {
                     totalStock: stock,
                     reservedStock,
                     availableStock: calculatedAvailableStock,
-                    warehouse: warehouse || 'Default Warehouse',
-                    lastSync: new Date(),
                   },
                 },
               }
@@ -354,6 +351,7 @@ export class ProductService {
         },
         include: {
           brand: true,
+          status: true,
           productCategories: { include: { category: true } },
           images: true,
           videos: true,
@@ -391,7 +389,6 @@ export class ProductService {
       images,
       videos,
       keywords,
-      warehouse,
       basePrice,
       discountPrice,
       taxPercentage,
@@ -401,7 +398,6 @@ export class ProductService {
       availableStock,
       ...productData
     } = updateProductDto;
-    void warehouse;
 
     // Business validations
     const finalBasePrice =
@@ -617,6 +613,7 @@ export class ProductService {
         },
         include: {
           brand: true,
+          status: true,
           productCategories: { include: { category: true } },
           images: { orderBy: { displayOrder: 'asc' } },
           videos: true,
@@ -629,9 +626,6 @@ export class ProductService {
     });
   }
 
-  /**
-   * Delete product (soft delete by default, hard delete if permanent = true).
-   */
   async remove(id: string, permanent = false) {
     await this.findOne(id);
 
@@ -641,11 +635,15 @@ export class ProductService {
       });
     }
 
+    const inactiveStatus = await this.prisma.status.findUnique({
+      where: { slug: 'inactive' },
+    });
+
     return this.prisma.product.update({
       where: { id },
       data: {
         deletedAt: new Date(),
-        status: false,
+        statusId: inactiveStatus ? inactiveStatus.id : undefined,
       },
     });
   }
@@ -655,9 +653,15 @@ export class ProductService {
    */
   async archive(id: string) {
     await this.findOne(id);
+    const archiveStatus = await this.prisma.status.findUnique({
+      where: { slug: 'archive' },
+    });
+    if (!archiveStatus) {
+      throw new NotFoundException('Archive status not found in database');
+    }
     return this.prisma.product.update({
       where: { id },
-      data: { archive: true },
+      data: { statusId: archiveStatus.id },
     });
   }
 
@@ -670,12 +674,18 @@ export class ProductService {
       throw new NotFoundException(`Product with ID "${id}" not found`);
     }
 
+    const activeStatus = await this.prisma.status.findUnique({
+      where: { slug: 'active' },
+    });
+    if (!activeStatus) {
+      throw new NotFoundException('Active status not found in database');
+    }
+
     return this.prisma.product.update({
       where: { id },
       data: {
-        archive: false,
+        statusId: activeStatus.id,
         deletedAt: null,
-        status: true,
       },
     });
   }
@@ -825,7 +835,7 @@ export class ProductService {
   async updateInventory(productId: string, dto: UpdateInventoryDto) {
     await this.findOne(productId);
 
-    const { totalStock, reservedStock = 0, availableStock, warehouse } = dto;
+    const { totalStock, reservedStock = 0, availableStock } = dto;
     const calcAvailableStock =
       availableStock !== undefined
         ? availableStock
@@ -834,7 +844,7 @@ export class ProductService {
     return this.prisma.$transaction(async (tx) => {
       // Find existing inventory record or create new
       const existingInventory = await tx.inventory.findFirst({
-        where: { productId, warehouse },
+        where: { productId },
       });
 
       const inventory = existingInventory
@@ -844,7 +854,6 @@ export class ProductService {
               totalStock,
               reservedStock,
               availableStock: calcAvailableStock,
-              lastSync: new Date(),
             },
           })
         : await tx.inventory.create({
@@ -853,8 +862,6 @@ export class ProductService {
               totalStock,
               reservedStock,
               availableStock: calcAvailableStock,
-              warehouse,
-              lastSync: new Date(),
             },
           });
 
@@ -1052,6 +1059,12 @@ export class ProductService {
     return this.prisma.category.update({
       where: { id },
       data: { isDeleted: true },
+    });
+  }
+
+  async getStatuses() {
+    return this.prisma.status.findMany({
+      orderBy: { status: 'asc' },
     });
   }
 }

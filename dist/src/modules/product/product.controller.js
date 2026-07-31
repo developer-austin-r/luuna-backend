@@ -28,6 +28,9 @@ let ProductController = class ProductController {
     async getCategories() {
         return this.productService.getCategories();
     }
+    async getStatuses() {
+        return this.productService.getStatuses();
+    }
     async getBrands() {
         return this.productService.getBrands();
     }
@@ -122,6 +125,19 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ProductController.prototype, "getCategories", null);
+__decorate([
+    (0, common_1.Get)('statuses/all'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Get all active statuses for product assignments',
+    }),
+    (0, swagger_1.ApiResponse)({
+        status: common_1.HttpStatus.OK,
+        description: 'Statuses fetched successfully.',
+    }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProductController.prototype, "getStatuses", null);
 __decorate([
     (0, common_1.Get)('brands/all'),
     (0, swagger_1.ApiOperation)({ summary: 'Get all active brands for product assignments' }),

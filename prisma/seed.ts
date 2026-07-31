@@ -1,9 +1,41 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import * as dotenv from 'dotenv';
 
-const prisma = new PrismaClient();
+dotenv.config();
+
+const DB_USER = process.env.DB_USER || 'luuna_user';
+const DB_PASSWORD = process.env.DB_PASSWORD || 'luuna_pass';
+const DB_HOST = process.env.DB_HOST || '127.0.0.1';
+const DB_PORT = process.env.DB_PORT || '5432';
+const DB_NAME = process.env.DB_NAME || 'luuna_db';
+const DB_SCHEMA = process.env.DB_SCHEMA || 'public';
+
+const connectionString = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=${DB_SCHEMA}`;
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('Seeding database with default categories and brands...');
+  console.log('Seeding database with default statuses, categories and brands...');
+
+  // Create Statuses
+  await prisma.status.deleteMany({});
+  const statuses = [
+    { id: '11111111-1111-4111-a111-111111111111', status: 'Active', slug: 'active' },
+    { id: '22222222-2222-4222-a222-222222222222', status: 'Inactive', slug: 'inactive' },
+    { id: '33333333-3333-4333-a333-333333333333', status: 'Archive', slug: 'archive' },
+  ];
+
+  for (const s of statuses) {
+    const upserted = await prisma.status.upsert({
+      where: { id: s.id },
+      update: {},
+      create: s,
+    });
+    console.log('Upserted Status:', upserted.status);
+  }
 
   // Create Brand
   const brand = await prisma.brand.upsert({
@@ -76,4 +108,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

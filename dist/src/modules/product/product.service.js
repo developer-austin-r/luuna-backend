@@ -29,12 +29,11 @@ let ProductService = class ProductService {
         }));
     }
     async findAll(query) {
-        const { page = 1, limit = 10, search, brandId, categoryId, status, archive, includeDeleted = false, minPrice, maxPrice, sortBy = 'createdAt', sortOrder = 'desc', } = query;
+        const { page = 1, limit = 10, search, brandId, categoryId, statusId, includeDeleted = false, minPrice, maxPrice, sortBy = 'createdAt', sortOrder = 'desc', } = query;
         const skip = (page - 1) * limit;
         const where = {
             ...(includeDeleted ? {} : { deletedAt: null }),
-            ...(status !== undefined ? { status } : {}),
-            ...(archive !== undefined ? { archive } : {}),
+            ...(statusId ? { statusId } : {}),
             ...(brandId ? { brandId } : {}),
             ...(categoryId
                 ? {
@@ -72,6 +71,7 @@ let ProductService = class ProductService {
                 orderBy: { [sortBy]: sortOrder },
                 include: {
                     brand: true,
+                    status: true,
                     productCategories: {
                         include: {
                             category: true,
@@ -104,6 +104,7 @@ let ProductService = class ProductService {
             where: { id },
             include: {
                 brand: true,
+                status: true,
                 productCategories: {
                     include: {
                         category: true,
@@ -123,7 +124,7 @@ let ProductService = class ProductService {
         return this.serializeBigInt(product);
     }
     async create(createProductDto) {
-        const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, warehouse, stock = 0, reservedStock = 0, availableStock, basePrice, discountPrice, taxPercentage = 0, rating = 0, ...productData } = createProductDto;
+        const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, stock = 0, reservedStock = 0, availableStock, basePrice, discountPrice, taxPercentage = 0, rating = 0, ...productData } = createProductDto;
         if (discountPrice !== undefined &&
             discountPrice !== null &&
             discountPrice > basePrice) {
@@ -246,15 +247,13 @@ let ProductService = class ProductService {
                             },
                         }
                         : {}),
-                    ...(warehouse || stock > 0
+                    ...(stock > 0
                         ? {
                             inventories: {
                                 create: {
                                     totalStock: stock,
                                     reservedStock,
                                     availableStock: calculatedAvailableStock,
-                                    warehouse: warehouse || 'Default Warehouse',
-                                    lastSync: new Date(),
                                 },
                             },
                         }
@@ -262,6 +261,7 @@ let ProductService = class ProductService {
                 },
                 include: {
                     brand: true,
+                    status: true,
                     productCategories: { include: { category: true } },
                     images: true,
                     videos: true,
@@ -283,8 +283,7 @@ let ProductService = class ProductService {
         if (!existing || existing.deletedAt !== null) {
             throw new common_1.NotFoundException(`Product with ID "${id}" not found`);
         }
-        const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, warehouse, basePrice, discountPrice, taxPercentage, rating, stock, reservedStock, availableStock, ...productData } = updateProductDto;
-        void warehouse;
+        const { sku, slug, brandId, brandName, categoryIds, images, videos, keywords, basePrice, discountPrice, taxPercentage, rating, stock, reservedStock, availableStock, ...productData } = updateProductDto;
         const finalBasePrice = basePrice !== undefined ? basePrice : Number(existing.basePrice);
         const finalDiscountPrice = discountPrice !== undefined
             ? discountPrice
@@ -454,6 +453,7 @@ let ProductService = class ProductService {
                 },
                 include: {
                     brand: true,
+                    status: true,
                     productCategories: { include: { category: true } },
                     images: { orderBy: { displayOrder: 'asc' } },
                     videos: true,
@@ -471,19 +471,28 @@ let ProductService = class ProductService {
                 where: { id },
             });
         }
+        const inactiveStatus = await this.prisma.status.findUnique({
+            where: { slug: 'inactive' },
+        });
         return this.prisma.product.update({
             where: { id },
             data: {
                 deletedAt: new Date(),
-                status: false,
+                statusId: inactiveStatus ? inactiveStatus.id : undefined,
             },
         });
     }
     async archive(id) {
         await this.findOne(id);
+        const archiveStatus = await this.prisma.status.findUnique({
+            where: { slug: 'archive' },
+        });
+        if (!archiveStatus) {
+            throw new common_1.NotFoundException('Archive status not found in database');
+        }
         return this.prisma.product.update({
             where: { id },
-            data: { archive: true },
+            data: { statusId: archiveStatus.id },
         });
     }
     async restore(id) {
@@ -491,12 +500,17 @@ let ProductService = class ProductService {
         if (!product) {
             throw new common_1.NotFoundException(`Product with ID "${id}" not found`);
         }
+        const activeStatus = await this.prisma.status.findUnique({
+            where: { slug: 'active' },
+        });
+        if (!activeStatus) {
+            throw new common_1.NotFoundException('Active status not found in database');
+        }
         return this.prisma.product.update({
             where: { id },
             data: {
-                archive: false,
+                statusId: activeStatus.id,
                 deletedAt: null,
-                status: true,
             },
         });
     }
@@ -602,13 +616,13 @@ let ProductService = class ProductService {
     }
     async updateInventory(productId, dto) {
         await this.findOne(productId);
-        const { totalStock, reservedStock = 0, availableStock, warehouse } = dto;
+        const { totalStock, reservedStock = 0, availableStock } = dto;
         const calcAvailableStock = availableStock !== undefined
             ? availableStock
             : totalStock - reservedStock;
         return this.prisma.$transaction(async (tx) => {
             const existingInventory = await tx.inventory.findFirst({
-                where: { productId, warehouse },
+                where: { productId },
             });
             const inventory = existingInventory
                 ? await tx.inventory.update({
@@ -617,7 +631,6 @@ let ProductService = class ProductService {
                         totalStock,
                         reservedStock,
                         availableStock: calcAvailableStock,
-                        lastSync: new Date(),
                     },
                 })
                 : await tx.inventory.create({
@@ -626,8 +639,6 @@ let ProductService = class ProductService {
                         totalStock,
                         reservedStock,
                         availableStock: calcAvailableStock,
-                        warehouse,
-                        lastSync: new Date(),
                     },
                 });
             const allInventories = await tx.inventory.findMany({
@@ -773,6 +784,11 @@ let ProductService = class ProductService {
         return this.prisma.category.update({
             where: { id },
             data: { isDeleted: true },
+        });
+    }
+    async getStatuses() {
+        return this.prisma.status.findMany({
+            orderBy: { status: 'asc' },
         });
     }
 };

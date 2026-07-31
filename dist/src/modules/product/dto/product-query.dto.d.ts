@@ -16,8 +16,7 @@ export declare class ProductQueryDto {
     search?: string;
     brandId?: string;
     categoryId?: string;
-    status?: boolean;
-    archive?: boolean;
+    statusId?: string;
     includeDeleted?: boolean;
     minPrice?: number;
     maxPrice?: number;

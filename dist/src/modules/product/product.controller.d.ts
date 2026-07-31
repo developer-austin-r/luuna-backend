@@ -5,18 +5,23 @@ export declare class ProductController {
     constructor(productService: ProductService);
     findAll(query: ProductQueryDto): Promise<{
         data: ({
+            status: {
+                id: string;
+                slug: string;
+                status: string;
+            };
             brand: {
                 id: string;
+                status: boolean;
                 name: string;
                 logo: string | null;
-                status: boolean;
             } | null;
             productCategories: ({
                 category: {
                     id: string;
-                    name: string;
-                    status: boolean;
                     slug: string;
+                    status: boolean;
+                    name: string;
                     parentId: string | null;
                     image: string | null;
                     description: string | null;
@@ -48,18 +53,16 @@ export declare class ProductController {
             }[];
             inventories: {
                 id: string;
+                updatedAt: Date;
                 reservedStock: number;
                 availableStock: number;
-                warehouse: string;
                 totalStock: number;
                 productId: string;
-                lastSync: Date | null;
             }[];
         } & {
             id: string;
-            name: string;
-            status: boolean;
             slug: string;
+            name: string;
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
@@ -74,7 +77,7 @@ export declare class ProductController {
             reservedStock: number;
             availableStock: number;
             rating: number;
-            archive: boolean;
+            statusId: string;
             deletedAt: Date | null;
         })[];
         meta: {
@@ -88,9 +91,9 @@ export declare class ProductController {
     }>;
     getCategories(): Promise<{
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        status: boolean;
+        name: string;
         parentId: string | null;
         image: string | null;
         description: string | null;
@@ -98,17 +101,22 @@ export declare class ProductController {
         createdAt: Date;
         updatedAt: Date;
     }[]>;
+    getStatuses(): Promise<{
+        id: string;
+        slug: string;
+        status: string;
+    }[]>;
     getBrands(): Promise<{
         id: string;
+        status: boolean;
         name: string;
         logo: string | null;
-        status: boolean;
     }[]>;
     createCategory(dto: CreateCategoryDto): Promise<{
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        status: boolean;
+        name: string;
         parentId: string | null;
         image: string | null;
         description: string | null;
@@ -118,9 +126,9 @@ export declare class ProductController {
     }>;
     updateCategory(id: string, dto: UpdateCategoryDto): Promise<{
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        status: boolean;
+        name: string;
         parentId: string | null;
         image: string | null;
         description: string | null;
@@ -130,9 +138,9 @@ export declare class ProductController {
     }>;
     deleteCategory(id: string): Promise<{
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        status: boolean;
+        name: string;
         parentId: string | null;
         image: string | null;
         description: string | null;
@@ -141,18 +149,23 @@ export declare class ProductController {
         updatedAt: Date;
     }>;
     findOne(id: string): Promise<{
+        status: {
+            id: string;
+            slug: string;
+            status: string;
+        };
         brand: {
             id: string;
+            status: boolean;
             name: string;
             logo: string | null;
-            status: boolean;
         } | null;
         productCategories: ({
             category: {
                 id: string;
-                name: string;
-                status: boolean;
                 slug: string;
+                status: boolean;
+                name: string;
                 parentId: string | null;
                 image: string | null;
                 description: string | null;
@@ -184,18 +197,16 @@ export declare class ProductController {
         }[];
         inventories: {
             id: string;
+            updatedAt: Date;
             reservedStock: number;
             availableStock: number;
-            warehouse: string;
             totalStock: number;
             productId: string;
-            lastSync: Date | null;
         }[];
     } & {
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
@@ -210,22 +221,27 @@ export declare class ProductController {
         reservedStock: number;
         availableStock: number;
         rating: number;
-        archive: boolean;
+        statusId: string;
         deletedAt: Date | null;
     }>;
     create(createProductDto: CreateProductDto): Promise<{
+        status: {
+            id: string;
+            slug: string;
+            status: string;
+        };
         brand: {
             id: string;
+            status: boolean;
             name: string;
             logo: string | null;
-            status: boolean;
         } | null;
         productCategories: ({
             category: {
                 id: string;
-                name: string;
-                status: boolean;
                 slug: string;
+                status: boolean;
+                name: string;
                 parentId: string | null;
                 image: string | null;
                 description: string | null;
@@ -257,18 +273,16 @@ export declare class ProductController {
         }[];
         inventories: {
             id: string;
+            updatedAt: Date;
             reservedStock: number;
             availableStock: number;
-            warehouse: string;
             totalStock: number;
             productId: string;
-            lastSync: Date | null;
         }[];
     } & {
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
@@ -283,22 +297,27 @@ export declare class ProductController {
         reservedStock: number;
         availableStock: number;
         rating: number;
-        archive: boolean;
+        statusId: string;
         deletedAt: Date | null;
     }>;
     update(id: string, updateProductDto: UpdateProductDto): Promise<{
+        status: {
+            id: string;
+            slug: string;
+            status: string;
+        };
         brand: {
             id: string;
+            status: boolean;
             name: string;
             logo: string | null;
-            status: boolean;
         } | null;
         productCategories: ({
             category: {
                 id: string;
-                name: string;
-                status: boolean;
                 slug: string;
+                status: boolean;
+                name: string;
                 parentId: string | null;
                 image: string | null;
                 description: string | null;
@@ -330,18 +349,16 @@ export declare class ProductController {
         }[];
         inventories: {
             id: string;
+            updatedAt: Date;
             reservedStock: number;
             availableStock: number;
-            warehouse: string;
             totalStock: number;
             productId: string;
-            lastSync: Date | null;
         }[];
     } & {
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
@@ -356,14 +373,13 @@ export declare class ProductController {
         reservedStock: number;
         availableStock: number;
         rating: number;
-        archive: boolean;
+        statusId: string;
         deletedAt: Date | null;
     }>;
     remove(id: string, permanent?: string): Promise<{
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
@@ -378,14 +394,13 @@ export declare class ProductController {
         reservedStock: number;
         availableStock: number;
         rating: number;
-        archive: boolean;
+        statusId: string;
         deletedAt: Date | null;
     }>;
     archive(id: string): Promise<{
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
@@ -400,14 +415,13 @@ export declare class ProductController {
         reservedStock: number;
         availableStock: number;
         rating: number;
-        archive: boolean;
+        statusId: string;
         deletedAt: Date | null;
     }>;
     restore(id: string): Promise<{
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
@@ -422,7 +436,7 @@ export declare class ProductController {
         reservedStock: number;
         availableStock: number;
         rating: number;
-        archive: boolean;
+        statusId: string;
         deletedAt: Date | null;
     }>;
     addImage(id: string, dto: CreateProductImageDto): Promise<{
@@ -478,19 +492,18 @@ export declare class ProductController {
     }>;
     updateInventory(id: string, dto: UpdateInventoryDto): Promise<{
         id: string;
+        updatedAt: Date;
         reservedStock: number;
         availableStock: number;
-        warehouse: string;
         totalStock: number;
         productId: string;
-        lastSync: Date | null;
     }>;
     assignCategories(id: string, dto: AssignCategoriesDto): Promise<({
         category: {
             id: string;
-            name: string;
-            status: boolean;
             slug: string;
+            status: boolean;
+            name: string;
             parentId: string | null;
             image: string | null;
             description: string | null;
@@ -506,15 +519,14 @@ export declare class ProductController {
     assignBrand(id: string, dto: AssignBrandDto): Promise<{
         brand: {
             id: string;
+            status: boolean;
             name: string;
             logo: string | null;
-            status: boolean;
         } | null;
     } & {
         id: string;
-        name: string;
-        status: boolean;
         slug: string;
+        name: string;
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
@@ -529,7 +541,7 @@ export declare class ProductController {
         reservedStock: number;
         availableStock: number;
         rating: number;
-        archive: boolean;
+        statusId: string;
         deletedAt: Date | null;
     }>;
 }

@@ -16,6 +16,7 @@ const health_module_1 = require("./health/health.module");
 const prisma_module_1 = require("./prisma/prisma.module");
 const user_module_1 = require("./modules/user/user.module");
 const product_module_1 = require("./modules/product/product.module");
+const coupon_module_1 = require("./modules/coupon/coupon.module");
 const configuration_1 = __importDefault(require("./configuration"));
 const constants_1 = require("./common/constants");
 let AppModule = class AppModule {
@@ -34,6 +35,7 @@ exports.AppModule = AppModule = __decorate([
             prisma_module_1.PrismaModule,
             user_module_1.UserModule,
             product_module_1.ProductModule,
+            coupon_module_1.CouponModule,
             health_module_1.HealthModule,
         ],
         controllers: [],

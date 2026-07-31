@@ -62,13 +62,11 @@ class CreateProductDto {
     reservedStock;
     availableStock;
     rating;
-    archive;
-    status;
+    statusId;
     categoryIds;
     images;
     videos;
     keywords;
-    warehouse;
 }
 exports.CreateProductDto = CreateProductDto;
 __decorate([
@@ -169,17 +167,10 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateProductDto.prototype, "rating", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: false, default: false }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], CreateProductDto.prototype, "archive", void 0);
-__decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: true, default: true }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], CreateProductDto.prototype, "status", void 0);
+    (0, swagger_1.ApiProperty)({ example: '11111111-1111-4111-a111-111111111111' }),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateProductDto.prototype, "statusId", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: ['123e4567-e89b-12d3-a456-426614174001'] }),
     (0, class_validator_1.IsOptional)(),
@@ -212,10 +203,4 @@ __decorate([
     (0, class_validator_1.IsString)({ each: true }),
     __metadata("design:type", Array)
 ], CreateProductDto.prototype, "keywords", void 0);
-__decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: 'Main Warehouse' }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreateProductDto.prototype, "warehouse", void 0);
 //# sourceMappingURL=create-product.dto.js.map
