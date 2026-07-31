@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -19,10 +20,18 @@ import {
   UpdateCategoryDto,
 } from './dto';
 import { Prisma } from '@prisma/client';
+import { StorageService } from '../../common/storage/storage.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ProductService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ProductService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
+
 
   private serializeBigInt<T>(data: T): T {
     return JSON.parse(
@@ -35,6 +44,118 @@ export class ProductService {
         return value;
       }),
     ) as T;
+  }
+
+  /**
+   * Resolve a stored DB value (object key OR legacy full URL) into a public URL
+   * suitable for returning in API responses.
+   *
+   * Rules:
+   *  - null / empty → returned as-is
+   *  - S3 object key (products/...) → converted to full public URL using AWS_S3_BASE_URL
+   *  - Full URL already containing the S3 base URL → key is extracted, then resolved
+   *  - Any other full URL (legacy external URL) → returned unchanged (backward compat)
+   */
+  /**
+   * Resolve a stored DB value into a public URL suitable for returning in API responses.
+   *
+   * Rules:
+   *  - null / empty → returned as-is
+   *  - Full URL (starts with http) → returned as-is (new style plain path)
+   *  - Relative path (legacy style) → converted to full public URL using AWS_S3_BASE_URL
+   */
+  private resolveUrl(value: string | null | undefined): string | null {
+    if (!value) return null;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    return this.storageService.generatePublicUrl(value);
+  }
+
+  /**
+   * Helper to detect and upload base64 file payloads to S3, returning the plain full S3 URL.
+   * If value is not base64, returns it as-is.
+   */
+  private async uploadIfBase64(
+    value: string | null | undefined,
+    productId: string,
+    fileType: 'image' | 'video',
+  ): Promise<string | null> {
+    if (!value) return null;
+    if (!value.startsWith('data:')) {
+      return value;
+    }
+
+    try {
+      const match = value.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) {
+        return value;
+      }
+
+      const mimeType = match[1];
+      const base64Data = match[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Determine extension from mimeType
+      let extension = 'bin';
+      if (mimeType.includes('/')) {
+        extension = mimeType.split('/')[1];
+      }
+
+      // Generate a unique filename key: products/{productId}/{fileType}-{random}.{ext}
+      const randomId = Math.random().toString(36).substring(2, 10);
+      const key = `products/${productId}/${fileType}-${randomId}.${extension}`;
+
+      await this.storageService.uploadFile({
+        key,
+        buffer,
+        mimeType,
+      });
+
+      // Return the plain full URL path directly to be saved in the database
+      return this.storageService.generatePublicUrl(key);
+    } catch (err) {
+      this.logger.error(`Failed to upload base64 ${fileType} to S3`, err instanceof Error ? err.stack : String(err));
+      return value;
+    }
+  }
+
+  /**
+   * Apply URL resolution to all image/video fields within a product object
+   * returned from Prisma, so responses always contain full public URLs.
+   */
+  private resolveProductMedia<T>(product: T): T {
+    const p = product as any;
+    if (p.images) {
+      p.images = p.images.map((img: any) => ({
+        ...img,
+        imageUrl: this.resolveUrl(img.imageUrl) ?? img.imageUrl,
+      }));
+    }
+    if (p.videos) {
+      p.videos = p.videos.map((vid: any) => ({
+        ...vid,
+        videoUrl: this.resolveUrl(vid.videoUrl) ?? vid.videoUrl,
+      }));
+    }
+    if (p.productCategories) {
+      p.productCategories = p.productCategories.map((pc: any) => {
+        if (pc.category && pc.category.image) {
+          pc.category = {
+            ...pc.category,
+            image: this.resolveUrl(pc.category.image) ?? pc.category.image,
+          };
+        }
+        return pc;
+      });
+    }
+    if (p.brand && p.brand.logo) {
+      p.brand = {
+        ...p.brand,
+        logo: this.resolveUrl(p.brand.logo) ?? p.brand.logo,
+      };
+    }
+    return product;
   }
 
   /**
@@ -116,8 +237,10 @@ export class ProductService {
 
     const totalPages = Math.ceil(total / limit);
 
+    const resolvedData = data.map((p) => this.resolveProductMedia(p));
+
     return this.serializeBigInt({
-      data,
+      data: resolvedData,
       meta: {
         total,
         page,
@@ -156,7 +279,7 @@ export class ProductService {
       throw new NotFoundException(`Product with ID "${id}" not found`);
     }
 
-    return this.serializeBigInt(product);
+    return this.serializeBigInt(this.resolveProductMedia(product));
   }
 
   /**
@@ -266,6 +389,40 @@ export class ProductService {
     const calculatedAvailableStock =
       availableStock !== undefined ? availableStock : stock - reservedStock;
 
+    // Sanitise numeric fields — valueAsNumber on empty inputs sends NaN
+    const safeDiscountPrice =
+      discountPrice !== undefined && discountPrice !== null && !Number.isNaN(discountPrice)
+        ? discountPrice
+        : undefined;
+    const safeTaxPercentage = Number.isNaN(taxPercentage) ? 0 : taxPercentage;
+    const safeRating = Number.isNaN(rating) ? 0 : rating;
+
+    const productId = randomUUID();
+
+    // Map base64 images and upload to S3 BEFORE database transaction
+    const imageCreates: Array<{ imageUrl: string; displayOrder?: number }> = [];
+    if (images && images.length > 0) {
+      for (const img of images) {
+        const storedUrl = await this.uploadIfBase64(img.imageUrl, productId, 'image');
+        imageCreates.push({
+          imageUrl: storedUrl ?? img.imageUrl,
+          displayOrder: img.displayOrder,
+        });
+      }
+    }
+
+    // Map base64 videos and upload to S3 BEFORE database transaction
+    const videoCreates: Array<{ videoUrl: string; fileSize?: bigint | null }> = [];
+    if (videos && videos.length > 0) {
+      for (const v of videos) {
+        const storedUrl = await this.uploadIfBase64(v.videoUrl, productId, 'video');
+        videoCreates.push({
+          videoUrl: storedUrl ?? v.videoUrl,
+          fileSize: v.fileSize ? BigInt(v.fileSize) : null,
+        });
+      }
+    }
+
     // Perform atomic transaction
     return this.prisma.$transaction(async (tx) => {
       let finalBrandId = brandId;
@@ -286,23 +443,24 @@ export class ProductService {
       const product = await tx.product.create({
         data: {
           ...productData,
+          id: productId,
           sku,
           slug,
           brandId: finalBrandId,
           basePrice: new Prisma.Decimal(basePrice),
           discountPrice:
-            discountPrice !== undefined && discountPrice !== null
-              ? new Prisma.Decimal(discountPrice)
+            safeDiscountPrice !== undefined
+              ? new Prisma.Decimal(safeDiscountPrice)
               : null,
-          taxPercentage: new Prisma.Decimal(taxPercentage),
+          taxPercentage: new Prisma.Decimal(safeTaxPercentage),
           finalPrice:
-            discountPrice !== undefined && discountPrice !== null
-              ? new Prisma.Decimal(discountPrice)
+            safeDiscountPrice !== undefined
+              ? new Prisma.Decimal(safeDiscountPrice)
               : new Prisma.Decimal(basePrice),
           stock,
           reservedStock,
           availableStock: calculatedAvailableStock,
-          rating,
+          rating: safeRating,
           ...(categoryIds && categoryIds.length > 0
             ? {
                 productCategories: {
@@ -310,23 +468,17 @@ export class ProductService {
                 },
               }
             : {}),
-          ...(images && images.length > 0
+          ...(imageCreates.length > 0
             ? {
                 images: {
-                  create: images.map((img) => ({
-                    imageUrl: img.imageUrl,
-                    displayOrder: img.displayOrder,
-                  })),
+                  create: imageCreates,
                 },
               }
             : {}),
-          ...(videos && videos.length > 0
+          ...(videoCreates.length > 0
             ? {
                 videos: {
-                  create: videos.map((v) => ({
-                    videoUrl: v.videoUrl,
-                    fileSize: v.fileSize ? BigInt(v.fileSize) : null,
-                  })),
+                  create: videoCreates,
                 },
               }
             : {}),
@@ -348,7 +500,7 @@ export class ProductService {
                 },
               }
             : {}),
-        },
+        } as any,
         include: {
           brand: true,
           status: true,
@@ -360,13 +512,14 @@ export class ProductService {
         },
       });
 
-      return this.serializeBigInt(product);
+      return this.serializeBigInt(this.resolveProductMedia(product));
     });
   }
 
   /**
    * Update product details.
    */
+
   async update(id: string, updateProductDto: UpdateProductDto) {
     const existing = await this.prisma.product.findUnique({
       where: { id },
@@ -496,6 +649,42 @@ export class ProductService {
           ? finalStock - finalReservedStock
           : existing.availableStock;
 
+    // Sync images: upload base64 to S3 BEFORE database transaction
+    const imageUpdates: Array<{ productId: string; imageUrl: string; displayOrder: number }> = [];
+    if (images !== undefined) {
+      if (images.length > 7) {
+        throw new BadRequestException(
+          'Enforced limit of maximum 7 images per product',
+        );
+      }
+      for (const img of images) {
+        const storedUrl = await this.uploadIfBase64(img.imageUrl, id, 'image');
+        imageUpdates.push({
+          productId: id,
+          imageUrl: storedUrl ?? img.imageUrl,
+          displayOrder: img.displayOrder ?? 0,
+        });
+      }
+    }
+
+    // Sync videos: upload base64 to S3 BEFORE database transaction
+    const videoUpdates: Array<{ productId: string; videoUrl: string; fileSize: bigint | null }> = [];
+    if (videos !== undefined) {
+      if (videos.length > 1) {
+        throw new BadRequestException(
+          'Enforced limit of maximum 1 video per product',
+        );
+      }
+      for (const vid of videos) {
+        const storedUrl = await this.uploadIfBase64(vid.videoUrl, id, 'video');
+        videoUpdates.push({
+          productId: id,
+          videoUrl: storedUrl ?? vid.videoUrl,
+          fileSize: vid.fileSize ? BigInt(vid.fileSize) : null,
+        });
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       let finalBrandId: string | null | undefined = brandId;
       if (brandName !== undefined) {
@@ -544,38 +733,20 @@ export class ProductService {
 
       // Sync images if provided
       if (images !== undefined) {
-        if (images.length > 7) {
-          throw new BadRequestException(
-            'Enforced limit of maximum 7 images per product',
-          );
-        }
         await tx.productImage.deleteMany({ where: { productId: id } });
-        if (images.length > 0) {
+        if (imageUpdates.length > 0) {
           await tx.productImage.createMany({
-            data: images.map((img) => ({
-              productId: id,
-              imageUrl: img.imageUrl,
-              displayOrder: img.displayOrder ?? 0,
-            })),
+            data: imageUpdates,
           });
         }
       }
 
       // Sync videos if provided
       if (videos !== undefined) {
-        if (videos.length > 1) {
-          throw new BadRequestException(
-            'Enforced limit of maximum 1 video per product',
-          );
-        }
         await tx.productVideo.deleteMany({ where: { productId: id } });
-        if (videos.length > 0) {
+        if (videoUpdates.length > 0) {
           await tx.productVideo.createMany({
-            data: videos.map((vid) => ({
-              productId: id,
-              videoUrl: vid.videoUrl,
-              fileSize: vid.fileSize ? BigInt(vid.fileSize) : null,
-            })),
+            data: videoUpdates,
           });
         }
       }
@@ -588,28 +759,33 @@ export class ProductService {
           slug,
           brandId: finalBrandId !== undefined ? finalBrandId : undefined,
           basePrice:
-            basePrice !== undefined ? new Prisma.Decimal(basePrice) : undefined,
+            basePrice !== undefined && !Number.isNaN(basePrice)
+              ? new Prisma.Decimal(basePrice)
+              : undefined,
           discountPrice:
             discountPrice !== undefined
-              ? discountPrice !== null
+              ? discountPrice !== null && !Number.isNaN(discountPrice)
                 ? new Prisma.Decimal(discountPrice)
                 : null
               : undefined,
           taxPercentage:
-            taxPercentage !== undefined
+            taxPercentage !== undefined && !Number.isNaN(taxPercentage)
               ? new Prisma.Decimal(taxPercentage)
               : undefined,
           finalPrice:
             discountPrice !== undefined
-              ? discountPrice !== null
+              ? discountPrice !== null && !Number.isNaN(discountPrice)
                 ? new Prisma.Decimal(discountPrice)
                 : new Prisma.Decimal(finalBasePrice)
               : undefined,
-          stock: stock !== undefined ? stock : undefined,
+          stock: stock !== undefined && !Number.isNaN(stock) ? stock : undefined,
           reservedStock:
-            reservedStock !== undefined ? reservedStock : undefined,
+            reservedStock !== undefined && !Number.isNaN(reservedStock)
+              ? reservedStock
+              : undefined,
           availableStock: finalAvailableStock,
-          rating: rating !== undefined ? rating : undefined,
+          rating:
+            rating !== undefined && !Number.isNaN(rating) ? rating : undefined,
         },
         include: {
           brand: true,
@@ -622,17 +798,33 @@ export class ProductService {
         },
       });
 
-      return this.serializeBigInt(updated);
+      return this.serializeBigInt(this.resolveProductMedia(updated));
     });
   }
 
   async remove(id: string, permanent = false) {
-    await this.findOne(id);
+    const product: any = await this.findOne(id);
 
     if (permanent) {
-      return this.prisma.product.delete({
-        where: { id },
-      });
+      // Collect all stored media keys for S3 cleanup (best-effort, after DB delete)
+      const mediaKeys: string[] = [
+        ...(product.images ?? []).map((img: { imageUrl: string }) => img.imageUrl),
+        ...(product.videos ?? []).map((vid: { videoUrl: string }) => vid.videoUrl),
+      ].filter((v): v is string => !!v);
+
+      const deleted = await this.prisma.product.delete({ where: { id } });
+
+      // Best-effort S3 cleanup — do not throw if this fails
+      if (mediaKeys.length) {
+        this.storageService.deleteMultipleFiles(mediaKeys).catch((err: unknown) => {
+          this.logger.error(
+            `Failed to clean up S3 objects for permanently deleted product ${id}`,
+            err instanceof Error ? err.stack : String(err),
+          );
+        });
+      }
+
+      return deleted;
     }
 
     const inactiveStatus = await this.prisma.status.findUnique({
@@ -647,6 +839,7 @@ export class ProductService {
       },
     });
   }
+
 
   /**
    * Archive a product.
@@ -704,21 +897,32 @@ export class ProductService {
         'Enforced limit of maximum 7 images per product exceeded',
       );
     }
-    return this.prisma.productImage.create({
+    const storedUrl = await this.uploadIfBase64(dto.imageUrl, productId, 'image');
+
+    const image = await this.prisma.productImage.create({
       data: {
         productId,
-        imageUrl: dto.imageUrl,
+        imageUrl: storedUrl ?? dto.imageUrl,
         displayOrder: dto.displayOrder ?? 0,
       },
     });
+
+    return {
+      ...image,
+      imageUrl: this.resolveUrl(image.imageUrl) ?? image.imageUrl,
+    };
   }
 
   async getImages(productId: string) {
     await this.findOne(productId);
-    return this.prisma.productImage.findMany({
+    const images = await this.prisma.productImage.findMany({
       where: { productId },
       orderBy: { displayOrder: 'asc' },
     });
+    return images.map((img) => ({
+      ...img,
+      imageUrl: this.resolveUrl(img.imageUrl) ?? img.imageUrl,
+    }));
   }
 
   async removeImage(productId: string, imageId: string) {
@@ -733,9 +937,22 @@ export class ProductService {
       );
     }
 
-    return this.prisma.productImage.delete({
+    const deleted = await this.prisma.productImage.delete({
       where: { id: imageId },
     });
+
+    // Best-effort S3 cleanup
+    this.storageService.deleteFile(image.imageUrl).catch((err: unknown) => {
+      this.logger.error(
+        `Failed to delete S3 object for image ${imageId}: ${image.imageUrl}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    });
+
+    return {
+      ...deleted,
+      imageUrl: this.resolveUrl(deleted.imageUrl) ?? deleted.imageUrl,
+    };
   }
 
   // ==========================================
@@ -752,13 +969,21 @@ export class ProductService {
         'Enforced limit of maximum 1 video per product exceeded',
       );
     }
-    return this.prisma.productVideo.create({
+    const storedVideoUrl = await this.uploadIfBase64(dto.videoUrl, productId, 'video');
+
+    const video = await this.prisma.productVideo.create({
       data: {
         productId,
-        videoUrl: dto.videoUrl,
+        videoUrl: storedVideoUrl ?? dto.videoUrl,
         fileSize: dto.fileSize ? BigInt(dto.fileSize) : null,
       },
     });
+
+    return {
+      ...video,
+      videoUrl: this.resolveUrl(video.videoUrl) ?? video.videoUrl,
+      fileSize: video.fileSize ? Number(video.fileSize) : null,
+    };
   }
 
   async getVideos(productId: string) {
@@ -769,6 +994,7 @@ export class ProductService {
 
     return videos.map((v) => ({
       ...v,
+      videoUrl: this.resolveUrl(v.videoUrl) ?? v.videoUrl,
       fileSize: v.fileSize ? Number(v.fileSize) : null,
     }));
   }
@@ -785,9 +1011,23 @@ export class ProductService {
       );
     }
 
-    return this.prisma.productVideo.delete({
+    const deleted = await this.prisma.productVideo.delete({
       where: { id: videoId },
     });
+
+    // Best-effort S3 cleanup
+    this.storageService.deleteFile(video.videoUrl).catch((err: unknown) => {
+      this.logger.error(
+        `Failed to delete S3 object for video ${videoId}: ${video.videoUrl}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    });
+
+    return {
+      ...deleted,
+      videoUrl: this.resolveUrl(deleted.videoUrl) ?? deleted.videoUrl,
+      fileSize: deleted.fileSize ? Number(deleted.fileSize) : null,
+    };
   }
 
   // ==========================================
@@ -955,17 +1195,25 @@ export class ProductService {
   }
 
   async getCategories() {
-    return this.prisma.category.findMany({
+    const categories = await this.prisma.category.findMany({
       where: { isDeleted: false },
       orderBy: { name: 'asc' },
     });
+    return categories.map((cat) => ({
+      ...cat,
+      image: this.resolveUrl(cat.image) ?? cat.image,
+    }));
   }
 
   async getBrands() {
-    return this.prisma.brand.findMany({
+    const brands = await this.prisma.brand.findMany({
       where: { status: true },
       orderBy: { name: 'asc' },
     });
+    return brands.map((brand) => ({
+      ...brand,
+      logo: this.resolveUrl(brand.logo) ?? brand.logo,
+    }));
   }
 
   async createCategory(dto: CreateCategoryDto) {
@@ -989,16 +1237,25 @@ export class ProductService {
       }
     }
 
-    return this.prisma.category.create({
+    const categoryId = randomUUID();
+    const storedImage = await this.uploadIfBase64(dto.image, categoryId, 'image');
+
+    const created = await this.prisma.category.create({
       data: {
+        id: categoryId,
         name: dto.name,
         slug: dto.slug,
         description: dto.description,
         parentId: dto.parentId || null,
-        image: dto.image,
+        image: storedImage ?? dto.image,
         status: dto.status !== undefined ? dto.status : true,
       },
     });
+
+    return {
+      ...created,
+      image: this.resolveUrl(created.image) ?? created.image,
+    };
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto) {
@@ -1034,7 +1291,11 @@ export class ProductService {
       }
     }
 
-    return this.prisma.category.update({
+    const storedImage = dto.image !== undefined
+      ? await this.uploadIfBase64(dto.image, id, 'image')
+      : undefined;
+
+    const updated = await this.prisma.category.update({
       where: { id },
       data: {
         name: dto.name !== undefined ? dto.name : undefined,
@@ -1042,10 +1303,15 @@ export class ProductService {
         description:
           dto.description !== undefined ? dto.description : undefined,
         parentId: dto.parentId !== undefined ? dto.parentId || null : undefined,
-        image: dto.image !== undefined ? dto.image : undefined,
+        image: dto.image !== undefined ? (storedImage ?? dto.image) : undefined,
         status: dto.status !== undefined ? dto.status : undefined,
       },
     });
+
+    return {
+      ...updated,
+      image: this.resolveUrl(updated.image) ?? updated.image,
+    };
   }
 
   async deleteCategory(id: string) {
