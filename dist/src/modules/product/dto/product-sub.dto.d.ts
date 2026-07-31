@@ -13,7 +13,6 @@ export declare class UpdateInventoryDto {
     totalStock: number;
     reservedStock?: number;
     availableStock?: number;
-    warehouse: string;
 }
 export declare class AssignCategoriesDto {
     categoryIds: string[];

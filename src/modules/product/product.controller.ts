@@ -61,6 +61,18 @@ export class ProductController {
     return this.productService.getCategories();
   }
 
+  @Get('statuses/all')
+  @ApiOperation({
+    summary: 'Get all active statuses for product assignments',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Statuses fetched successfully.',
+  })
+  async getStatuses() {
+    return this.productService.getStatuses();
+  }
+
   @Get('brands/all')
   @ApiOperation({ summary: 'Get all active brands for product assignments' })
   @ApiResponse({

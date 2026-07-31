@@ -58,7 +58,6 @@ class UpdateInventoryDto {
     totalStock;
     reservedStock;
     availableStock;
-    warehouse;
 }
 exports.UpdateInventoryDto = UpdateInventoryDto;
 __decorate([
@@ -81,11 +80,6 @@ __decorate([
     (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], UpdateInventoryDto.prototype, "availableStock", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: 'Main Warehouse' }),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], UpdateInventoryDto.prototype, "warehouse", void 0);
 class AssignCategoriesDto {
     categoryIds;
 }

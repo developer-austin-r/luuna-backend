@@ -33,8 +33,7 @@ class ProductQueryDto {
     search;
     brandId;
     categoryId;
-    status;
-    archive;
+    statusId;
     includeDeleted;
     minPrice;
     maxPrice;
@@ -77,19 +76,11 @@ __decorate([
     __metadata("design:type", String)
 ], ProductQueryDto.prototype, "categoryId", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: true }),
+    (0, swagger_1.ApiPropertyOptional)({ example: '11111111-1111-4111-a111-111111111111' }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_transformer_1.Transform)(({ value }) => value === 'true' || value === true),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], ProductQueryDto.prototype, "status", void 0);
-__decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: false }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_transformer_1.Transform)(({ value }) => value === 'true' || value === true),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], ProductQueryDto.prototype, "archive", void 0);
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], ProductQueryDto.prototype, "statusId", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: false }),
     (0, class_validator_1.IsOptional)(),

@@ -48,6 +48,15 @@ model Category {
   @@map("categories")
 }
 
+model Status {
+  id       String    @id @default(uuid()) @map("id")
+  status   String    @map("status")
+  slug     String    @unique @map("slug")
+  products Product[]
+
+  @@map("statuses")
+}
+
 model Product {
   id                String            @id @default(uuid()) @map("id")
   sku               String            @unique @map("sku")
@@ -64,12 +73,12 @@ model Product {
   reservedStock     Int               @default(0) @map("reserved_stock")
   availableStock    Int               @default(0) @map("available_stock")
   rating            Float             @default(0) @map("rating")
-  archive           Boolean           @default(false) @map("archive")
-  status            Boolean           @default(true) @map("status")
+  statusId          String            @map("status_id")
   deletedAt         DateTime?         @map("deleted_at")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
   brand             Brand?            @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  status            Status            @relation(fields: [statusId], references: [id])
   productCategories ProductCategory[]
   images            ProductImage[]
   videos            ProductVideo[]
@@ -77,7 +86,7 @@ model Product {
   keywords          ProductKeyword[]
 
   @@index([brandId])
-  @@index([status, archive])
+  @@index([statusId])
   @@index([createdAt])
   @@map("products")
 }
@@ -118,17 +127,15 @@ model ProductVideo {
 }
 
 model Inventory {
-  id             String    @id @default(uuid()) @map("id")
-  productId      String    @map("product_id")
-  totalStock     Int       @default(0) @map("total_stock")
-  reservedStock  Int       @default(0) @map("reserved_stock")
-  availableStock Int       @default(0) @map("available_stock")
-  warehouse      String    @map("warehouse")
-  lastSync       DateTime? @map("last_sync")
-  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid()) @map("id")
+  productId      String   @map("product_id")
+  totalStock     Int      @default(0) @map("total_stock")
+  reservedStock  Int      @default(0) @map("reserved_stock")
+  availableStock Int      @default(0) @map("available_stock")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
-  @@index([warehouse])
   @@map("inventories")
 }
 
@@ -141,4 +148,36 @@ model ProductKeyword {
   @@index([productId])
   @@index([keyword])
   @@map("product_keywords")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CouponStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+model Coupon {
+  id                 String       @id @default(uuid()) @map("id")
+  code               String       @unique @map("code")
+  discountType       DiscountType @map("discount_type")
+  discountValue      Decimal      @db.Decimal(10,2) @map("discount_value")
+  minimumOrderAmount Decimal      @default(0.00) @db.Decimal(10,2) @map("minimum_order_amount")
+  redemptionLimit    Int?         @map("redemption_limit")
+  redeemedCount      Int          @default(0) @map("redeemed_count")
+  activeDate         DateTime     @default(now()) @map("active_date")
+  expiryDate         DateTime     @map("expiry_date")
+  status             CouponStatus @default(ACTIVE) @map("status")
+  description        String?      @db.Text @map("description")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@index([status])
+  @@index([expiryDate])
+  @@map("coupons")
 }

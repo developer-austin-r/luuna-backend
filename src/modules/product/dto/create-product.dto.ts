@@ -1,6 +1,5 @@
 import {
   IsArray,
-  IsBoolean,
   IsInt,
   IsNumber,
   IsOptional,
@@ -120,15 +119,9 @@ export class CreateProductDto {
   @Max(5)
   rating?: number;
 
-  @ApiPropertyOptional({ example: false, default: false })
-  @IsOptional()
-  @IsBoolean()
-  archive?: boolean;
-
-  @ApiPropertyOptional({ example: true, default: true })
-  @IsOptional()
-  @IsBoolean()
-  status?: boolean;
+  @ApiProperty({ example: '11111111-1111-4111-a111-111111111111' })
+  @IsUUID()
+  statusId: string;
 
   @ApiPropertyOptional({ example: ['123e4567-e89b-12d3-a456-426614174001'] })
   @IsOptional()
@@ -157,9 +150,4 @@ export class CreateProductDto {
   @IsArray()
   @IsString({ each: true })
   keywords?: string[];
-
-  @ApiPropertyOptional({ example: 'Main Warehouse' })
-  @IsOptional()
-  @IsString()
-  warehouse?: string;
 }
