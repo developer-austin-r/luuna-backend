@@ -25,7 +25,6 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { memoryStorage } from 'multer';
 import { ProductService } from './product.service';
 import {
   AssignBrandDto,
@@ -96,7 +95,6 @@ export class ProductController {
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
       fileFilter: (_request, file, callback) => {
         const allowedMimeTypes = new Set([
