@@ -21,4 +21,3 @@ export default () => ({
     s3BaseUrl: process.env.AWS_S3_BASE_URL,
   },
 });
-

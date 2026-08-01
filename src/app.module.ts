@@ -29,4 +29,3 @@ import { validationSchema } from './common/constants';
   providers: [],
 })
 export class AppModule {}
-

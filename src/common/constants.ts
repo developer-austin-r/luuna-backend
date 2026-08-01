@@ -20,4 +20,3 @@ export const validationSchema = Joi.object({
   AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
   AWS_S3_BASE_URL: Joi.string().uri().optional(),
 });
-

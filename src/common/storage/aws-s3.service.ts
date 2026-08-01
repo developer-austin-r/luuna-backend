@@ -74,10 +74,16 @@ export class AwsS3Service implements IStorageService {
    * Upload a buffer to S3 and return the stored object key.
    */
   async uploadFile(params: UploadFileParams): Promise<string> {
-    const { key, buffer, mimeType, cacheControl = 'public, max-age=31536000' } =
-      params;
+    const {
+      key,
+      buffer,
+      mimeType,
+      cacheControl = 'public, max-age=31536000',
+    } = params;
 
-    this.logger.log(`Uploading file to S3 — key: ${key}, size: ${buffer.length} bytes`);
+    this.logger.log(
+      `Uploading file to S3 — key: ${key}, size: ${buffer.length} bytes`,
+    );
 
     try {
       await this.client.send(

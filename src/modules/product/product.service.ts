@@ -32,7 +32,6 @@ export class ProductService {
     private readonly storageService: StorageService,
   ) {}
 
-
   private serializeBigInt<T>(data: T): T {
     return JSON.parse(
       JSON.stringify(data, (_, value: unknown) => {
@@ -115,7 +114,10 @@ export class ProductService {
       // Return the plain full URL path directly to be saved in the database
       return this.storageService.generatePublicUrl(key);
     } catch (err) {
-      this.logger.error(`Failed to upload base64 ${fileType} to S3`, err instanceof Error ? err.stack : String(err));
+      this.logger.error(
+        `Failed to upload base64 ${fileType} to S3`,
+        err instanceof Error ? err.stack : String(err),
+      );
       return value;
     }
   }
@@ -124,6 +126,7 @@ export class ProductService {
    * Apply URL resolution to all image/video fields within a product object
    * returned from Prisma, so responses always contain full public URLs.
    */
+  /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
   private resolveProductMedia<T>(product: T): T {
     const p = product as any;
     if (p.images) {
@@ -157,6 +160,7 @@ export class ProductService {
     }
     return product;
   }
+  /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 
   /**
    * Get paginated list of products with filters, search, and sorting.
@@ -391,7 +395,9 @@ export class ProductService {
 
     // Sanitise numeric fields — valueAsNumber on empty inputs sends NaN
     const safeDiscountPrice =
-      discountPrice !== undefined && discountPrice !== null && !Number.isNaN(discountPrice)
+      discountPrice !== undefined &&
+      discountPrice !== null &&
+      !Number.isNaN(discountPrice)
         ? discountPrice
         : undefined;
     const safeTaxPercentage = Number.isNaN(taxPercentage) ? 0 : taxPercentage;
@@ -403,7 +409,11 @@ export class ProductService {
     const imageCreates: Array<{ imageUrl: string; displayOrder?: number }> = [];
     if (images && images.length > 0) {
       for (const img of images) {
-        const storedUrl = await this.uploadIfBase64(img.imageUrl, productId, 'image');
+        const storedUrl = await this.uploadIfBase64(
+          img.imageUrl,
+          productId,
+          'image',
+        );
         imageCreates.push({
           imageUrl: storedUrl ?? img.imageUrl,
           displayOrder: img.displayOrder,
@@ -412,10 +422,15 @@ export class ProductService {
     }
 
     // Map base64 videos and upload to S3 BEFORE database transaction
-    const videoCreates: Array<{ videoUrl: string; fileSize?: bigint | null }> = [];
+    const videoCreates: Array<{ videoUrl: string; fileSize?: bigint | null }> =
+      [];
     if (videos && videos.length > 0) {
       for (const v of videos) {
-        const storedUrl = await this.uploadIfBase64(v.videoUrl, productId, 'video');
+        const storedUrl = await this.uploadIfBase64(
+          v.videoUrl,
+          productId,
+          'video',
+        );
         videoCreates.push({
           videoUrl: storedUrl ?? v.videoUrl,
           fileSize: v.fileSize ? BigInt(v.fileSize) : null,
@@ -441,6 +456,7 @@ export class ProductService {
       }
 
       const product = await tx.product.create({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: {
           ...productData,
           id: productId,
@@ -650,7 +666,11 @@ export class ProductService {
           : existing.availableStock;
 
     // Sync images: upload base64 to S3 BEFORE database transaction
-    const imageUpdates: Array<{ productId: string; imageUrl: string; displayOrder: number }> = [];
+    const imageUpdates: Array<{
+      productId: string;
+      imageUrl: string;
+      displayOrder: number;
+    }> = [];
     if (images !== undefined) {
       if (images.length > 7) {
         throw new BadRequestException(
@@ -668,7 +688,11 @@ export class ProductService {
     }
 
     // Sync videos: upload base64 to S3 BEFORE database transaction
-    const videoUpdates: Array<{ productId: string; videoUrl: string; fileSize: bigint | null }> = [];
+    const videoUpdates: Array<{
+      productId: string;
+      videoUrl: string;
+      fileSize: bigint | null;
+    }> = [];
     if (videos !== undefined) {
       if (videos.length > 1) {
         throw new BadRequestException(
@@ -778,7 +802,8 @@ export class ProductService {
                 ? new Prisma.Decimal(discountPrice)
                 : new Prisma.Decimal(finalBasePrice)
               : undefined,
-          stock: stock !== undefined && !Number.isNaN(stock) ? stock : undefined,
+          stock:
+            stock !== undefined && !Number.isNaN(stock) ? stock : undefined,
           reservedStock:
             reservedStock !== undefined && !Number.isNaN(reservedStock)
               ? reservedStock
@@ -808,20 +833,28 @@ export class ProductService {
     if (permanent) {
       // Collect all stored media keys for S3 cleanup (best-effort, after DB delete)
       const mediaKeys: string[] = [
-        ...(product.images ?? []).map((img: { imageUrl: string }) => img.imageUrl),
-        ...(product.videos ?? []).map((vid: { videoUrl: string }) => vid.videoUrl),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+        ...(product.images ?? []).map(
+          (img: { imageUrl: string }) => img.imageUrl,
+        ),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+        ...(product.videos ?? []).map(
+          (vid: { videoUrl: string }) => vid.videoUrl,
+        ),
       ].filter((v): v is string => !!v);
 
       const deleted = await this.prisma.product.delete({ where: { id } });
 
       // Best-effort S3 cleanup — do not throw if this fails
       if (mediaKeys.length) {
-        this.storageService.deleteMultipleFiles(mediaKeys).catch((err: unknown) => {
-          this.logger.error(
-            `Failed to clean up S3 objects for permanently deleted product ${id}`,
-            err instanceof Error ? err.stack : String(err),
-          );
-        });
+        this.storageService
+          .deleteMultipleFiles(mediaKeys)
+          .catch((err: unknown) => {
+            this.logger.error(
+              `Failed to clean up S3 objects for permanently deleted product ${id}`,
+              err instanceof Error ? err.stack : String(err),
+            );
+          });
       }
 
       return deleted;
@@ -839,7 +872,6 @@ export class ProductService {
       },
     });
   }
-
 
   /**
    * Archive a product.
@@ -897,7 +929,11 @@ export class ProductService {
         'Enforced limit of maximum 7 images per product exceeded',
       );
     }
-    const storedUrl = await this.uploadIfBase64(dto.imageUrl, productId, 'image');
+    const storedUrl = await this.uploadIfBase64(
+      dto.imageUrl,
+      productId,
+      'image',
+    );
 
     const image = await this.prisma.productImage.create({
       data: {
@@ -969,7 +1005,11 @@ export class ProductService {
         'Enforced limit of maximum 1 video per product exceeded',
       );
     }
-    const storedVideoUrl = await this.uploadIfBase64(dto.videoUrl, productId, 'video');
+    const storedVideoUrl = await this.uploadIfBase64(
+      dto.videoUrl,
+      productId,
+      'video',
+    );
 
     const video = await this.prisma.productVideo.create({
       data: {
@@ -1238,7 +1278,11 @@ export class ProductService {
     }
 
     const categoryId = randomUUID();
-    const storedImage = await this.uploadIfBase64(dto.image, categoryId, 'image');
+    const storedImage = await this.uploadIfBase64(
+      dto.image,
+      categoryId,
+      'image',
+    );
 
     const created = await this.prisma.category.create({
       data: {
@@ -1291,9 +1335,10 @@ export class ProductService {
       }
     }
 
-    const storedImage = dto.image !== undefined
-      ? await this.uploadIfBase64(dto.image, id, 'image')
-      : undefined;
+    const storedImage =
+      dto.image !== undefined
+        ? await this.uploadIfBase64(dto.image, id, 'image')
+        : undefined;
 
     const updated = await this.prisma.category.update({
       where: { id },
