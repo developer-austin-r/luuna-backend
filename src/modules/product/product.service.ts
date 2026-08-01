@@ -24,6 +24,7 @@ import { StorageService } from '../../common/storage/storage.service';
 import { randomUUID } from 'crypto';
 
 type UploadedImage = { buffer: Buffer; mimetype: string };
+const DEFAULT_WAREHOUSE = 'Main Warehouse';
 
 @Injectable()
 export class ProductService {
@@ -526,6 +527,7 @@ export class ProductService {
                     totalStock: stock,
                     reservedStock,
                     availableStock: calculatedAvailableStock,
+                    warehouse: DEFAULT_WAREHOUSE,
                   },
                 },
               }
@@ -1156,6 +1158,7 @@ export class ProductService {
               totalStock,
               reservedStock,
               availableStock: calcAvailableStock,
+              warehouse: DEFAULT_WAREHOUSE,
             },
           });
 

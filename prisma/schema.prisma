@@ -132,10 +132,12 @@ model Inventory {
   totalStock     Int      @default(0) @map("total_stock")
   reservedStock  Int      @default(0) @map("reserved_stock")
   availableStock Int      @default(0) @map("available_stock")
+  warehouse      String   @default("Main Warehouse") @map("warehouse")
   updatedAt      DateTime @updatedAt @map("updated_at")
   product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
+  @@index([warehouse])
   @@map("inventories")
 }
 
