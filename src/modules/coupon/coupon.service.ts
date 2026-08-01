@@ -37,13 +37,14 @@ export class CouponService {
 
   async findAll() {
     return this.prisma.coupon.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string) {
-    const coupon = await this.prisma.coupon.findUnique({
-      where: { id },
+    const coupon = await this.prisma.coupon.findFirst({
+      where: { id, deletedAt: null },
     });
     if (!coupon) {
       throw new NotFoundException(`Coupon with ID "${id}" not found`);
@@ -58,6 +59,7 @@ export class CouponService {
       const existing = await this.prisma.coupon.findFirst({
         where: {
           code: dto.code.toUpperCase(),
+          deletedAt: null,
           NOT: { id },
         },
       });
@@ -86,8 +88,9 @@ export class CouponService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.coupon.delete({
+    return this.prisma.coupon.update({
       where: { id },
+      data: { deletedAt: new Date() },
     });
   }
 }
