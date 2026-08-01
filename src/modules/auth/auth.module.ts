@@ -6,28 +6,28 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { TokenModule } from '../token/token.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     PrismaModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule,
+    ConfigModule,
+    TokenModule,
+    EmailModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('auth.jwtSecret'),
-        signOptions: {
-          expiresIn: configService.get<string>(
-            'auth.jwtAccessExpiresIn',
-          ) as `${number}${'s' | 'm' | 'h' | 'd'}`,
-        },
       }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
   providers: [AuthService, AuthRepository, JwtStrategy, JwtRefreshStrategy],
-  exports: [AuthService, JwtModule, PassportModule],
+  exports: [AuthService],
 })
 export class AuthModule {}
