@@ -25,8 +25,9 @@ async function bootstrap() {
   app.use(urlencoded({ limit: '50mb', extended: true }));
   app.use(cookieParser());
 
+  const corsOrigin = configService.get<string>('CORS_ORIGIN');
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN') || true,
+    origin: corsOrigin === '*' ? true : corsOrigin || true,
     credentials: true,
   });
   app.use(helmet());
