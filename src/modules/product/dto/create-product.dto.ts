@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Min,
   Max,
   ArrayMaxSize,
@@ -126,7 +127,11 @@ export class CreateProductDto {
   @ApiPropertyOptional({ example: ['123e4567-e89b-12d3-a456-426614174001'] })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  // Existing seed data contains UUID-shaped legacy IDs that are not v4.
+  // ProductService also verifies that each supplied ID exists and is active.
+  @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
+    each: true,
+  })
   categoryIds?: string[];
 
   @ApiPropertyOptional({ type: [CreateProductImageItemDto] })
