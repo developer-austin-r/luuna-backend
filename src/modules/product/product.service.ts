@@ -23,6 +23,8 @@ import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/storage/storage.service';
 import { randomUUID } from 'crypto';
 
+type UploadedImage = { buffer: Buffer; mimetype: string };
+
 @Injectable()
 export class ProductService {
   private readonly logger = new Logger(ProductService.name);
@@ -31,6 +33,18 @@ export class ProductService {
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
   ) {}
+
+  /** Stores a binary multipart image and returns the public URL for JSON DTOs. */
+  async uploadImage(file: UploadedImage): Promise<{ url: string }> {
+    const extension = file.mimetype.split('/')[1] || 'bin';
+    const key = `uploads/${randomUUID()}.${extension}`;
+    await this.storageService.uploadFile({
+      key,
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+    });
+    return { url: this.storageService.generatePublicUrl(key) };
+  }
 
   private serializeBigInt<T>(data: T): T {
     return JSON.parse(

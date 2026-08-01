@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,14 +12,20 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBody,
+  ApiConsumes,
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { memoryStorage } from 'multer';
 import { ProductService } from './product.service';
 import {
   AssignBrandDto,
@@ -33,6 +40,8 @@ import {
   CreateCategoryDto,
   UpdateCategoryDto,
 } from './dto';
+
+type UploadedImage = { buffer: Buffer; mimetype: string };
 
 @ApiTags('Products')
 @Controller('products')
@@ -81,6 +90,41 @@ export class ProductController {
   })
   async getBrands() {
     return this.productService.getBrands();
+  }
+
+  @Post('uploads')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_request, file, callback) => {
+        const allowedMimeTypes = new Set([
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/gif',
+        ]);
+        callback(null, allowedMimeTypes.has(file.mimetype));
+      },
+    }),
+  )
+  @ApiOperation({ summary: 'Upload an image and return its public S3 URL' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  async uploadImage(@UploadedFile() file?: UploadedImage) {
+    if (!file) {
+      throw new BadRequestException(
+        'Upload a JPEG, PNG, WebP, or GIF image no larger than 10 MB.',
+      );
+    }
+    return this.productService.uploadImage(file);
   }
 
   @Post('categories')
