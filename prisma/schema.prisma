@@ -6,14 +6,30 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id        String   @id @default(uuid()) @map("id")
-  email     String   @unique @map("email")
-  name      String?  @map("name")
-  password  String   @map("password")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model Role {
+  id          String   @id @default(uuid()) @map("id")
+  name        String   @unique @map("name")
+  description String?  @map("description")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  users       User[]
 
+  @@map("roles")
+}
+
+model User {
+  id             String    @id @default(uuid()) @map("id")
+  email          String    @unique @map("email")
+  name           String?   @map("name")
+  password       String    @map("password")
+  roleId         String?   @map("role_id")
+  failedAttempts Int       @default(0) @map("failed_attempts")
+  lockedUntil    DateTime? @map("locked_until")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  role           Role?     @relation(fields: [roleId], references: [id])
+
+  @@index([roleId])
   @@map("users")
 }
 
