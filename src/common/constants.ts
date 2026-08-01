@@ -19,4 +19,15 @@ export const validationSchema = Joi.object({
   AWS_ACCESS_KEY_ID: Joi.string().optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
   AWS_S3_BASE_URL: Joi.string().uri().optional(),
+  // JWT / Auth configuration
+  JWT_SECRET: Joi.string().optional(),
+  JWT_REFRESH_SECRET: Joi.string().optional(),
+  JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+  AUTH_MAX_LOGIN_ATTEMPTS: Joi.number().integer().min(1).default(3),
+  AUTH_LOCK_DURATION_MINUTES: Joi.number().integer().min(1).default(30),
+  // Cookie configuration
+  COOKIE_DOMAIN: Joi.string().allow('').optional(),
+  COOKIE_SECURE: Joi.string().valid('true', 'false').default('false'),
+  COOKIE_SAME_SITE: Joi.string().valid('Lax', 'Strict', 'None').default('Lax'),
 });

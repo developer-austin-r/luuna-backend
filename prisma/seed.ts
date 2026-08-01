@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import { seedBrands } from './seeders/brands.seed';
 import { seedCategories } from './seeders/categories.seed';
 import { seedStatuses } from './seeders/statuses.seed';
+import { seedRoles } from './seeders/roles.seed';
 
 dotenv.config();
 
@@ -21,8 +22,9 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('Seeding database with default statuses, categories and brands...');
+  console.log('Seeding database with roles, statuses, categories and brands...');
 
+  await seedRoles(prisma);
   await seedStatuses(prisma);
   await seedBrands(prisma);
   await seedCategories(prisma);

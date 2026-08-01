@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './modules/user/user.module';
 import { ProductModule } from './modules/product/product.module';
 import { CouponModule } from './modules/coupon/coupon.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { StorageModule } from './common/storage/storage.module';
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
@@ -20,6 +21,7 @@ import { validationSchema } from './common/constants';
     }),
     StorageModule,
     PrismaModule,
+    AuthModule,
     UserModule,
     ProductModule,
     CouponModule,
