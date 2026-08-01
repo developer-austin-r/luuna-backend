@@ -143,7 +143,7 @@ docker compose down -v
 | `npm run prisma:migrate` | Create and apply a development migration |
 | `npm run prisma:migrate:deploy` | Apply existing migrations |
 | `npm run prisma:studio` | Open Prisma Studio |
-| `npm run prisma:seed` | Run the Prisma seed script |
+| `npm run prisma:seed` | Run the idempotent Prisma seeders (statuses, brands, and categories) |
 
 ## CI/CD
 

@@ -112,6 +112,13 @@ jobs:
             sudo docker compose --env-file "$ENV_FILE" run --rm --no-deps backend \
               npx prisma migrate deploy
 
+            # Seed the default reference data after migrations. Each seeder uses
+            # Prisma upsert with stable IDs, so this is safe on every deployment
+            # and never creates duplicate statuses, brands, or categories.
+            echo "Seeding default reference data..."
+            sudo docker compose --env-file "$ENV_FILE" run --rm --no-deps backend \
+              npm run prisma:seed
+
             echo "Starting updated backend..."
             sudo docker compose --env-file "$ENV_FILE" up -d --no-deps backend
 
