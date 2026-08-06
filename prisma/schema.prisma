@@ -28,6 +28,7 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   role           Role?     @relation(fields: [roleId], references: [id])
+  orders         Order[]
 
   @@index([roleId])
   @@map("users")
@@ -100,6 +101,7 @@ model Product {
   videos            ProductVideo[]
   inventories       Inventory[]
   keywords          ProductKeyword[]
+  orderItems        OrderItem[]
 
   @@index([brandId])
   @@index([statusId])
@@ -193,9 +195,111 @@ model Coupon {
   description        String?      @db.Text @map("description")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
+  deletedAt          DateTime?    @map("deleted_at")
 
   @@index([code])
   @@index([status])
   @@index([expiryDate])
   @@map("coupons")
 }
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  PAYPAL
+  COD
+  STRIPE
+  BANK_TRANSFER
+}
+
+enum ShipmentStatus {
+  PENDING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+}
+
+model Order {
+  id             String        @id @default(uuid()) @map("id")
+  orderNumber    String        @unique @map("order_number")
+  userId         String        @map("user_id")
+  orderStatus    OrderStatus   @map("order_status")
+  paymentStatus  PaymentStatus @map("payment_status")
+  paymentMethod  PaymentMethod @map("payment_method")
+  subtotal       Decimal       @db.Decimal(10, 2) @map("subtotal")
+  discount       Decimal       @default(0.00) @db.Decimal(10, 2) @map("discount")
+  tax            Decimal       @default(0.00) @db.Decimal(10, 2) @map("tax")
+  shippingCharge Decimal       @default(0.00) @db.Decimal(10, 2) @map("shipping_charge")
+  totalAmount    Decimal       @db.Decimal(10, 2) @map("total_amount")
+  notes          String?       @map("notes")
+  orderedAt      DateTime      @default(now()) @map("ordered_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+  shipment   Shipment[]
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid()) @map("id")
+  orderId   String  @map("order_id")
+  productId String  @map("product_id")
+  quantity  Int     @map("quantity")
+  price     Decimal @db.Decimal(10, 2) @map("price")
+  discount  Decimal @default(0.00) @db.Decimal(10, 2) @map("discount")
+  tax       Decimal @default(0.00) @db.Decimal(10, 2) @map("tax")
+  total     Decimal @db.Decimal(10, 2) @map("total")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Shipment {
+  id               String         @id @default(uuid()) @map("id")
+  orderId          String         @map("order_id")
+  trackingNumber   String         @unique @map("tracking_number")
+  courierName      String         @map("courier_name")
+  shipmentStatus   ShipmentStatus @map("shipment_status")
+  shippedDate      DateTime?      @map("shipped_date")
+  expectedDelivery DateTime?      @map("expected_delivery")
+  deliveredDate    DateTime?      @map("delivered_date")
+  shippingAddress  String         @map("shipping_address")
+  city             String         @map("city")
+  state            String         @map("state")
+  postalCode       String         @map("postal_code")
+  country          String         @map("country")
+  phone            String         @map("phone")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([trackingNumber])
+  @@map("shipments")
+}
+

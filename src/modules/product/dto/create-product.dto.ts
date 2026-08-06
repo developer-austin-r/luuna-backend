@@ -34,6 +34,7 @@ export class CreateProductVideoItemDto {
   @ApiPropertyOptional({ example: 10485760 })
   @IsOptional()
   @IsNumber()
+  @Max(10485760, { message: 'Video file size must be 10MB or less' })
   fileSize?: number;
 }
 
