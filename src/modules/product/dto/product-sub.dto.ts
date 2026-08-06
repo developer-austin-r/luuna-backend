@@ -8,6 +8,7 @@ import {
   IsUUID,
   Matches,
   Min,
+  Max,
 } from 'class-validator';
 
 export class CreateProductImageDto {
@@ -30,6 +31,7 @@ export class CreateProductVideoDto {
   @ApiPropertyOptional({ example: 10485760 })
   @IsOptional()
   @IsNumber()
+  @Max(10485760, { message: 'Video file size must be 10MB or less' })
   fileSize?: number;
 }
 
