@@ -6,6 +6,7 @@ import { UserModule } from './modules/user/user.module';
 import { ProductModule } from './modules/product/product.module';
 import { CouponModule } from './modules/coupon/coupon.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { OrderModule } from './modules/order/order.module';
 import { StorageModule } from './common/storage/storage.module';
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
@@ -25,6 +26,7 @@ import { validationSchema } from './common/constants';
     UserModule,
     ProductModule,
     CouponModule,
+    OrderModule,
     HealthModule,
   ],
   controllers: [],
