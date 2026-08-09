@@ -22,12 +22,14 @@ model User {
   email          String    @unique @map("email")
   name           String?   @map("name")
   password       String    @map("password")
+  isVerified     Boolean   @default(false) @map("is_verified")
   roleId         String?   @map("role_id")
   failedAttempts Int       @default(0) @map("failed_attempts")
   lockedUntil    DateTime? @map("locked_until")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   role           Role?     @relation(fields: [roleId], references: [id])
+  tokens         Token[]
   orders         Order[]
 
   @@index([roleId])
@@ -203,6 +205,38 @@ model Coupon {
   @@map("coupons")
 }
 
+enum TokenType {
+  REFRESH_TOKEN
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+enum TokenStatus {
+  ACTIVE
+  USED
+  REVOKED
+  EXPIRED
+}
+
+model Token {
+  id        String      @id @default(uuid()) @map("id")
+  userId    String      @map("user_id")
+  tokenHash String      @map("token_hash")
+  tokenType TokenType   @map("token_type")
+  status    TokenStatus @default(ACTIVE) @map("status")
+  expiresAt DateTime    @map("expires_at")
+  usedAt    DateTime?   @map("used_at")
+  ipAddress String?     @map("ip_address")
+  userAgent String?     @map("user_agent")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("tokens")
+}
+
 enum OrderStatus {
   PENDING
   PROCESSING
@@ -222,15 +256,14 @@ enum PaymentStatus {
 enum PaymentMethod {
   CREDIT_CARD
   PAYPAL
-  COD
   STRIPE
-  BANK_TRANSFER
+  CASH_ON_DELIVERY
 }
 
 enum ShipmentStatus {
   PENDING
-  SHIPPED
   IN_TRANSIT
+  SHIPPED
   DELIVERED
   RETURNED
 }
@@ -239,21 +272,20 @@ model Order {
   id             String        @id @default(uuid()) @map("id")
   orderNumber    String        @unique @map("order_number")
   userId         String        @map("user_id")
-  orderStatus    OrderStatus   @map("order_status")
-  paymentStatus  PaymentStatus @map("payment_status")
+  orderStatus    OrderStatus   @default(PENDING) @map("order_status")
+  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
   paymentMethod  PaymentMethod @map("payment_method")
   subtotal       Decimal       @db.Decimal(10, 2) @map("subtotal")
   discount       Decimal       @default(0.00) @db.Decimal(10, 2) @map("discount")
   tax            Decimal       @default(0.00) @db.Decimal(10, 2) @map("tax")
   shippingCharge Decimal       @default(0.00) @db.Decimal(10, 2) @map("shipping_charge")
   totalAmount    Decimal       @db.Decimal(10, 2) @map("total_amount")
-  notes          String?       @map("notes")
+  notes          String?       @db.Text @map("notes")
   orderedAt      DateTime      @default(now()) @map("ordered_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
-
-  user       User        @relation(fields: [userId], references: [id])
-  orderItems OrderItem[]
-  shipment   Shipment[]
+  user           User          @relation(fields: [userId], references: [id])
+  orderItems     OrderItem[]
+  shipment       Shipment[]
 
   @@index([userId])
   @@index([orderNumber])
@@ -269,9 +301,8 @@ model OrderItem {
   discount  Decimal @default(0.00) @db.Decimal(10, 2) @map("discount")
   tax       Decimal @default(0.00) @db.Decimal(10, 2) @map("tax")
   total     Decimal @db.Decimal(10, 2) @map("total")
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -279,27 +310,23 @@ model OrderItem {
 }
 
 model Shipment {
-  id               String         @id @default(uuid()) @map("id")
-  orderId          String         @map("order_id")
-  trackingNumber   String         @unique @map("tracking_number")
-  courierName      String         @map("courier_name")
-  shipmentStatus   ShipmentStatus @map("shipment_status")
-  shippedDate      DateTime?      @map("shipped_date")
-  expectedDelivery DateTime?      @map("expected_delivery")
-  deliveredDate    DateTime?      @map("delivered_date")
-  shippingAddress  String         @map("shipping_address")
-  city             String         @map("city")
-  state            String         @map("state")
-  postalCode       String         @map("postal_code")
-  country          String         @map("country")
-  phone            String         @map("phone")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-
-  order Order @relation(fields: [orderId], references: [id])
+  id              String         @id @default(uuid()) @map("id")
+  orderId         String         @map("order_id")
+  trackingNumber  String?        @map("tracking_number")
+  courierName     String?        @map("courier_name")
+  shipmentStatus  ShipmentStatus @default(PENDING) @map("shipment_status")
+  shippingAddress String         @db.Text @map("shipping_address")
+  city            String         @map("city")
+  state           String         @map("state")
+  postalCode      String         @map("postal_code")
+  country         String         @map("country")
+  phone           String?        @map("phone")
+  shippedDate     DateTime?      @map("shipped_date")
+  deliveredDate   DateTime?      @map("delivered_date")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
-  @@index([trackingNumber])
   @@map("shipments")
 }
-
