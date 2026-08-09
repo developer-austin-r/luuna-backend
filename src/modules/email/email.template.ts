@@ -40,7 +40,10 @@ export const getWelcomeTemplate = (name: string) => {
   `);
 };
 
-export const getVerificationTemplate = (name: string, verificationUrl: string) => {
+export const getVerificationTemplate = (
+  name: string,
+  verificationUrl: string,
+) => {
   return baseTemplate(`
     <h2 style="margin-top: 0;">Verify Your Email</h2>
     <p>Hello ${name || 'there'},</p>

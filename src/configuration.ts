@@ -33,10 +33,14 @@ export default () => ({
     cookieSecure: process.env.COOKIE_SECURE === 'true',
     cookieSameSite:
       (process.env.COOKIE_SAME_SITE as 'Lax' | 'Strict' | 'None') || 'Lax',
-    verificationExpiresInMinutes: Number(process.env.AUTH_VERIFICATION_EXPIRES_MINUTES ?? 1440),
+    verificationExpiresInMinutes: Number(
+      process.env.AUTH_VERIFICATION_EXPIRES_MINUTES ?? 1440,
+    ),
     resetExpiresInMinutes: Number(process.env.AUTH_RESET_EXPIRES_MINUTES ?? 60),
-    frontendVerificationUrl: process.env.FRONTEND_VERIFICATION_URL || 'http://localhost:3000/verify',
-    frontendResetUrl: process.env.FRONTEND_RESET_URL || 'http://localhost:3000/reset-password',
+    frontendVerificationUrl:
+      process.env.FRONTEND_VERIFICATION_URL || 'http://localhost:3000/verify',
+    frontendResetUrl:
+      process.env.FRONTEND_RESET_URL || 'http://localhost:3000/reset-password',
     bcryptRounds: Number(process.env.BCRYPT_ROUNDS ?? 10),
   },
   rateLimit: {
@@ -44,8 +48,12 @@ export default () => ({
     signupWindowMinutes: Number(process.env.AUTH_SIGNUP_WINDOW_MINUTES ?? 60),
     resetRequests: Number(process.env.AUTH_MAX_RESET_REQUESTS ?? 3),
     resetWindowMinutes: Number(process.env.AUTH_RESET_WINDOW_MINUTES ?? 60),
-    verificationRequests: Number(process.env.AUTH_MAX_EMAIL_VERIFICATION_REQUESTS ?? 3),
-    verificationWindowMinutes: Number(process.env.AUTH_EMAIL_VERIFICATION_WINDOW_MINUTES ?? 60),
+    verificationRequests: Number(
+      process.env.AUTH_MAX_EMAIL_VERIFICATION_REQUESTS ?? 3,
+    ),
+    verificationWindowMinutes: Number(
+      process.env.AUTH_EMAIL_VERIFICATION_WINDOW_MINUTES ?? 60,
+    ),
     loginAttempts: Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS ?? 5),
     loginWindowMinutes: Number(process.env.AUTH_LOGIN_LOCK_MINUTES ?? 15),
   },

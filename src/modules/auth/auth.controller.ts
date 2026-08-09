@@ -36,10 +36,17 @@ export class AuthController {
 
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOkResponse({ description: 'Registration successful. Please check your email to verify your account.' })
+  @ApiOkResponse({
+    description:
+      'Registration successful. Please check your email to verify your account.',
+  })
   @ApiConflictResponse({ description: 'Email already in use' })
   signup(@Body() signupDto: SignupDto, @Req() req: Request) {
-    return this.authService.signup(signupDto, req.ip, req.headers['user-agent']);
+    return this.authService.signup(
+      signupDto,
+      req.ip,
+      req.headers['user-agent'],
+    );
   }
 
   @Get('verify-email/validate')
@@ -60,15 +67,33 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Successfully authenticated.' })
   @ApiUnauthorizedResponse({ description: 'Invalid email or password.' })
-  login(@Body() loginDto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.authService.login(loginDto, res, req.ip, req.headers['user-agent']);
+  login(
+    @Body() loginDto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.authService.login(
+      loginDto,
+      res,
+      req.ip,
+      req.headers['user-agent'],
+    );
   }
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ description: 'If the account exists, a reset link has been sent.' })
-  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto, @Req() req: Request) {
-    return this.authService.forgotPassword(forgotPasswordDto, req.ip, req.headers['user-agent']);
+  @ApiOkResponse({
+    description: 'If the account exists, a reset link has been sent.',
+  })
+  forgotPassword(
+    @Body() forgotPasswordDto: ForgotPasswordDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.forgotPassword(
+      forgotPasswordDto,
+      req.ip,
+      req.headers['user-agent'],
+    );
   }
 
   @Get('reset-password/validate')
@@ -96,14 +121,22 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.refresh(user, res, req.ip, req.headers['user-agent']);
+    return this.authService.refresh(
+      user,
+      res,
+      req.ip,
+      req.headers['user-agent'],
+    );
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtRefreshGuard) // Require refresh token for logout to identify user
   @ApiOkResponse({ description: 'Logged out successfully.' })
-  logout(@CurrentUser() user: JwtPayload, @Res({ passthrough: true }) res: Response) {
+  logout(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     this.authService.logout(user.sub, res);
     return { message: 'Logged out successfully.' };
   }
@@ -112,8 +145,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtRefreshGuard)
   @ApiOkResponse({ description: 'Logged out from all devices successfully.' })
-  logoutAll(@CurrentUser() user: JwtPayload, @Res({ passthrough: true }) res: Response) {
-    this.authService.logoutAll(user.sub, res);
+  async logoutAll(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logoutAll(user.sub, res);
     return { message: 'Logged out from all devices successfully.' };
   }
 }

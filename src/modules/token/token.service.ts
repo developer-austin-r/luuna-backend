@@ -75,7 +75,10 @@ export class TokenService {
     return matchedToken;
   }
 
-  async getValidationStatus(rawToken: string, tokenType: TokenType): Promise<string> {
+  async getValidationStatus(
+    rawToken: string,
+    tokenType: TokenType,
+  ): Promise<string> {
     const tokenHash = this.hashToken(rawToken);
 
     const matchedToken = await this.prisma.token.findFirst({
@@ -114,7 +117,10 @@ export class TokenService {
     });
   }
 
-  async revokeAllUserTokensOfType(userId: string, tokenType: TokenType): Promise<void> {
+  async revokeAllUserTokensOfType(
+    userId: string,
+    tokenType: TokenType,
+  ): Promise<void> {
     await this.prisma.token.updateMany({
       where: {
         userId,

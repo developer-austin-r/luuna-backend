@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import { getWelcomeTemplate, getVerificationTemplate, getForgotPasswordTemplate, getPasswordChangedTemplate } from './email.template';
+import {
+  getWelcomeTemplate,
+  getVerificationTemplate,
+  getForgotPasswordTemplate,
+  getPasswordChangedTemplate,
+} from './email.template';
 
 @Injectable()
 export class EmailService {
@@ -12,8 +17,11 @@ export class EmailService {
   constructor(private readonly configService: ConfigService) {
     const region = this.configService.get<string>('aws.region');
     const accessKeyId = this.configService.get<string>('aws.accessKeyId');
-    const secretAccessKey = this.configService.get<string>('aws.secretAccessKey');
-    this.senderEmail = this.configService.get<string>('aws.sesSender') || 'noreply@luuna.com';
+    const secretAccessKey = this.configService.get<string>(
+      'aws.secretAccessKey',
+    );
+    this.senderEmail =
+      this.configService.get<string>('aws.sesSender') || 'noreply@luuna.com';
 
     this.sesClient = new SESClient({
       region: region,
@@ -47,12 +55,17 @@ export class EmailService {
     try {
       if (process.env.NODE_ENV !== 'test') {
         const response = await this.sesClient.send(command);
-        this.logger.log(`Email sent to ${to}, MessageId: ${response.MessageId}`);
+        this.logger.log(
+          `Email sent to ${to}, MessageId: ${response.MessageId}`,
+        );
       } else {
         this.logger.log(`Skipped sending email to ${to} in test environment`);
       }
     } catch (error) {
-      this.logger.error(`Failed to send email to ${to}`, (error as Error).stack);
+      this.logger.error(
+        `Failed to send email to ${to}`,
+        (error as Error).stack,
+      );
       throw error;
     }
   }

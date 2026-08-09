@@ -67,7 +67,10 @@ export class AuthRepository {
     });
   }
 
-  async updateUserPassword(userId: string, newPasswordHash: string): Promise<void> {
+  async updateUserPassword(
+    userId: string,
+    newPasswordHash: string,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: { password: newPasswordHash },
