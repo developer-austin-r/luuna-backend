@@ -29,7 +29,6 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   role           Role?     @relation(fields: [roleId], references: [id])
-  tokens         Token[]
 
   @@index([roleId])
   @@map("users")
@@ -102,6 +101,7 @@ model Product {
   videos            ProductVideo[]
   inventories       Inventory[]
   keywords          ProductKeyword[]
+  orderItems        OrderItem[]
 
   @@index([brandId])
   @@index([statusId])
@@ -195,45 +195,10 @@ model Coupon {
   description        String?      @db.Text @map("description")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
+  deletedAt          DateTime?    @map("deleted_at")
 
   @@index([code])
   @@index([status])
   @@index([expiryDate])
   @@map("coupons")
-}
-
-enum TokenType {
-  EMAIL_VERIFICATION
-  PASSWORD_RESET
-  REFRESH_TOKEN
-  OTP
-  INVITE
-}
-
-enum TokenStatus {
-  ACTIVE
-  USED
-  EXPIRED
-  REVOKED
-}
-
-model Token {
-  id          String      @id @default(uuid()) @map("id")
-  userId      String      @map("user_id")
-  tokenHash   String      @map("token_hash")
-  tokenType   TokenType   @map("token_type")
-  status      TokenStatus @default(ACTIVE) @map("status")
-  expiresAt   DateTime    @map("expires_at")
-  usedAt      DateTime?   @map("used_at")
-  ipAddress   String?     @map("ip_address")
-  userAgent   String?     @map("user_agent")
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-  
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([tokenType])
-  @@index([status])
-  @@map("tokens")
 }

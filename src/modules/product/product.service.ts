@@ -100,16 +100,20 @@ export class ProductService {
       return value;
     }
 
+    const match = value.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) {
+      return value;
+    }
+
+    const mimeType = match[1];
+    const base64Data = match[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    if (fileType === 'video' && buffer.length > 10 * 1024 * 1024) {
+      throw new BadRequestException('Video file size exceeds the 10MB limit');
+    }
+
     try {
-      const match = value.match(/^data:([^;]+);base64,(.+)$/);
-      if (!match) {
-        return value;
-      }
-
-      const mimeType = match[1];
-      const base64Data = match[2];
-      const buffer = Buffer.from(base64Data, 'base64');
-
       // Determine extension from mimeType
       let extension = 'bin';
       if (mimeType.includes('/')) {
@@ -1020,6 +1024,9 @@ export class ProductService {
       throw new BadRequestException(
         'Enforced limit of maximum 1 video per product exceeded',
       );
+    }
+    if (dto.fileSize && dto.fileSize > 10 * 1024 * 1024) {
+      throw new BadRequestException('Video file size exceeds the 10MB limit');
     }
     const storedVideoUrl = await this.uploadIfBase64(
       dto.videoUrl,
