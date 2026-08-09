@@ -124,6 +124,7 @@ async function main() {
         email,
         password: hashedPassword,
         roleId: adminRole.id,
+        isVerified: true,
       },
       select: {
         id: true,
