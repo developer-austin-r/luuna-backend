@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './modules/user/user.module';
@@ -20,6 +22,16 @@ import { validationSchema } from './common/constants';
       validationSchema,
       expandVariables: true,
     }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get<number>('rateLimit.loginWindowMinutes', 15) * 60,
+          limit: config.get<number>('rateLimit.loginAttempts', 5),
+        },
+      ],
+    }),
     StorageModule,
     PrismaModule,
     AuthModule,
@@ -30,6 +42,11 @@ import { validationSchema } from './common/constants';
     HealthModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

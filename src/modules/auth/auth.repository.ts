@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Find a user by email, including their role and auth-related fields.
-   * Always returns these fields so the service can make timing-safe decisions.
-   */
+  async createUser(data: Prisma.UserCreateInput) {
+    return this.prisma.user.create({ data });
+  }
+
   async findUserByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
@@ -17,6 +18,7 @@ export class AuthRepository {
         email: true,
         name: true,
         password: true,
+        isVerified: true,
         failedAttempts: true,
         lockedUntil: true,
         role: {
@@ -29,7 +31,12 @@ export class AuthRepository {
     });
   }
 
-  /** Increment failed login attempts and optionally set lockedUntil. */
+  async findUserById(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
+  }
+
   async incrementFailedAttempts(
     userId: string,
     lockedUntil: Date | null,
@@ -43,7 +50,6 @@ export class AuthRepository {
     });
   }
 
-  /** Reset failed attempts and clear the lock after a successful login. */
   async resetFailedAttempts(userId: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
@@ -51,6 +57,23 @@ export class AuthRepository {
         failedAttempts: 0,
         lockedUntil: null,
       },
+    });
+  }
+
+  async verifyUser(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isVerified: true },
+    });
+  }
+
+  async updateUserPassword(
+    userId: string,
+    newPasswordHash: string,
+  ): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: newPasswordHash },
     });
   }
 }
