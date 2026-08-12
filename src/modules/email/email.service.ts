@@ -66,7 +66,6 @@ export class EmailService {
         `Failed to send email to ${to}`,
         (error as Error).stack,
       );
-      throw error;
     }
   }
 

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { compare, hash } from 'bcrypt';
+import { compare, hash } from 'bcryptjs';
 import type { Response } from 'express';
 import { AuthRepository } from './auth.repository';
 import { LoginDto } from './dto/login.dto';
@@ -89,7 +89,8 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       password: passwordHash,
-      isVerified: false,
+      isVerified: true,
+      role: { connect: { id: '00000000-0000-0000-0000-000000000002' } }, // User role (client)
     });
 
     const verifyExpiry = this.configService.get<number>(
