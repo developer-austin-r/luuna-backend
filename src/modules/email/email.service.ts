@@ -15,10 +15,10 @@ export class EmailService {
   private readonly senderEmail: string;
 
   constructor(private readonly configService: ConfigService) {
-    const region = this.configService.get<string>('aws.region');
-    const accessKeyId = this.configService.get<string>('aws.accessKeyId');
+    const region = this.configService.get<string>('aws.sesRegion');
+    const accessKeyId = this.configService.get<string>('aws.sesAccessKeyId');
     const secretAccessKey = this.configService.get<string>(
-      'aws.secretAccessKey',
+      'aws.sesSecretAccessKey',
     );
     this.senderEmail =
       this.configService.get<string>('aws.sesSender') || 'noreply@luuna.com';
