@@ -21,6 +21,10 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const prismaService = app.get(PrismaService);
 
+  // Enable trust proxy for behind-the-proxy client IP resolution
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', true);
+
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ limit: '50mb', extended: true }));
   app.use(cookieParser());
