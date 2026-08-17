@@ -28,34 +28,34 @@ export class UserService {
     });
   }
 
-async findAll() {
-  const users = await this.prisma.user.findMany({
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      roleId: true,
-      createdAt: true,
-      updatedAt: true,
-      role: {
-        select: {
-          id: true,
-          name: true,
+  async findAll() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        roleId: true,
+        createdAt: true,
+        updatedAt: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return users.map((user) => ({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    roleId: user.roleId,
-    roleName: user.role?.name ?? '',
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  }));
-}
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      roleId: user.roleId,
+      roleName: user.role?.name ?? '',
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    }));
+  }
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({

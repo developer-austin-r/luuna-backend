@@ -14,6 +14,7 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -25,6 +26,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { ProductService } from './product.service';
 import {
   AssignBrandDto,
@@ -39,13 +41,17 @@ import {
   CreateCategoryDto,
   UpdateCategoryDto,
 } from './dto';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 type UploadedImage = { buffer: Buffer; mimetype: string };
 
 @ApiTags('Products')
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly activityLogService: ActivityLogService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get paginated list of products with filters' })
@@ -53,8 +59,21 @@ export class ProductController {
     status: HttpStatus.OK,
     description: 'Products fetched successfully.',
   })
-  async findAll(@Query() query: ProductQueryDto) {
-    return this.productService.findAll(query);
+  async findAll(@Query() query: ProductQueryDto, @Req() req: Request) {
+    const result = await this.productService.findAll(query);
+    if (query.search) {
+      await this.activityLogService.log({
+        userId: req.user?.sub,
+        sessionId: req['sessionId'],
+        moduleName: 'search',
+        actionName: 'search_performed',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        description: `Searched catalog for "${query.search}"`,
+        metadata: { keyword: query.search },
+      });
+    }
+    return result;
   }
 
   @Get('categories/all')
@@ -172,8 +191,24 @@ export class ProductController {
     status: HttpStatus.NOT_FOUND,
     description: 'Product not found.',
   })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.productService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    const product = await this.productService.findOne(id);
+    await this.activityLogService.log({
+      userId: req.user?.sub,
+      sessionId: req['sessionId'],
+      moduleName: 'product',
+      actionName: 'product_viewed',
+      entityId: id,
+      description: `Viewed product "${product.name}"`,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: {
+        product_id: product.id,
+        product_name: product.name,
+        sku: product.sku,
+      },
+    });
+    return product;
   }
 
   @Post()

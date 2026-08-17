@@ -16,6 +16,7 @@ import { TokenService } from '../token/token.service';
 import { EmailService } from '../email/email.service';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { TokenType } from '@prisma/client';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 const INVALID_CREDENTIALS = 'Invalid email or password.';
 const EMAIL_NOT_VERIFIED = 'Email is not verified. Please check your inbox.';
@@ -45,6 +46,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly tokenService: TokenService,
     private readonly emailService: EmailService,
+    private readonly activityLogService: ActivityLogService,
   ) {
     this.jwtSecret = this.configService.get<string>('auth.jwtSecret')!;
     this.jwtRefreshSecret = this.configService.get<string>(
@@ -73,6 +75,7 @@ export class AuthService {
     dto: SignupDto,
     ipAddress?: string,
     userAgent?: string,
+    sessionId?: string,
   ): Promise<string> {
     const existingUser = await this.authRepository.findUserByEmail(dto.email);
     if (existingUser) {
@@ -112,6 +115,17 @@ export class AuthService {
       rawToken,
     );
 
+    await this.activityLogService.log({
+      userId: user.id,
+      sessionId,
+      moduleName: 'authentication',
+      actionName: 'signup_started',
+      ipAddress,
+      userAgent,
+      description: `User signup started`,
+      metadata: { email: user.email },
+    });
+
     return 'Registration successful. Please check your email to verify your account.';
   }
 
@@ -122,13 +136,29 @@ export class AuthService {
     );
   }
 
-  async verifyEmail(token: string): Promise<string> {
+  async verifyEmail(
+    token: string,
+    ipAddress?: string,
+    userAgent?: string,
+    sessionId?: string,
+  ): Promise<string> {
     const matchedToken = await this.tokenService.validateToken(
       token,
       TokenType.EMAIL_VERIFICATION,
     );
     await this.authRepository.verifyUser(matchedToken.userId);
     await this.tokenService.markAsUsed(matchedToken.id);
+
+    await this.activityLogService.log({
+      userId: matchedToken.userId,
+      sessionId,
+      moduleName: 'authentication',
+      actionName: 'signup_completed',
+      ipAddress,
+      userAgent,
+      description: `User signup completed (email verified)`,
+    });
+
     return 'Your email has been verified successfully.';
   }
 
@@ -137,19 +167,49 @@ export class AuthService {
     res: Response,
     ipAddress?: string,
     userAgent?: string,
+    sessionId?: string,
   ): Promise<{ user: SafeUser }> {
     const user = await this.authRepository.findUserByEmail(dto.email);
 
     if (!user) {
       await compare(dto.password, '$2a$10$dummyhashforinvalidemailabcdefghij');
+      await this.activityLogService.log({
+        sessionId,
+        moduleName: 'authentication',
+        actionName: 'login_failed',
+        ipAddress,
+        userAgent,
+        description: `Failed login attempt: User not found`,
+        metadata: { email: dto.email },
+      });
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
+      await this.activityLogService.log({
+        userId: user.id,
+        sessionId,
+        moduleName: 'authentication',
+        actionName: 'login_failed',
+        ipAddress,
+        userAgent,
+        description: `Failed login attempt: Account locked`,
+        metadata: { email: dto.email },
+      });
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
 
     if (!user.isVerified) {
+      await this.activityLogService.log({
+        userId: user.id,
+        sessionId,
+        moduleName: 'authentication',
+        actionName: 'login_failed',
+        ipAddress,
+        userAgent,
+        description: `Failed login attempt: Email not verified`,
+        metadata: { email: dto.email },
+      });
       throw new UnauthorizedException(EMAIL_NOT_VERIFIED);
     }
 
@@ -163,6 +223,16 @@ export class AuthService {
           : null;
 
       await this.authRepository.incrementFailedAttempts(user.id, lockedUntil);
+      await this.activityLogService.log({
+        userId: user.id,
+        sessionId,
+        moduleName: 'authentication',
+        actionName: 'login_failed',
+        ipAddress,
+        userAgent,
+        description: `Failed login attempt: Invalid credentials`,
+        metadata: { email: dto.email },
+      });
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
 
@@ -194,6 +264,17 @@ export class AuthService {
       dto.rememberMe ?? false,
     );
 
+    await this.activityLogService.log({
+      userId: user.id,
+      sessionId,
+      moduleName: 'authentication',
+      actionName: 'login',
+      ipAddress,
+      userAgent,
+      description: `User logged in successfully`,
+      metadata: { email: user.email },
+    });
+
     return {
       user: {
         id: user.id,
@@ -208,6 +289,7 @@ export class AuthService {
     dto: ForgotPasswordDto,
     ipAddress?: string,
     userAgent?: string,
+    sessionId?: string,
   ): Promise<string> {
     const user = await this.authRepository.findUserByEmail(dto.email);
     // Never reveal whether the email exists
@@ -228,6 +310,28 @@ export class AuthService {
         user.name || 'User',
         rawToken,
       );
+
+      await this.activityLogService.log({
+        userId: user.id,
+        sessionId,
+        moduleName: 'password',
+        actionName: 'forgot_password_requested',
+        ipAddress,
+        userAgent,
+        description: `Forgot password requested`,
+        metadata: { email: dto.email },
+      });
+    } else {
+      await this.activityLogService.log({
+        userId: null,
+        sessionId,
+        moduleName: 'password',
+        actionName: 'forgot_password_requested',
+        ipAddress,
+        userAgent,
+        description: `Forgot password requested for non-existing email`,
+        metadata: { email: dto.email },
+      });
     }
 
     return 'If the account exists, a reset link has been sent.';
@@ -240,7 +344,12 @@ export class AuthService {
     );
   }
 
-  async resetPassword(dto: ResetPasswordDto): Promise<string> {
+  async resetPassword(
+    dto: ResetPasswordDto,
+    ipAddress?: string,
+    userAgent?: string,
+    sessionId?: string,
+  ): Promise<string> {
     const matchedToken = await this.tokenService.validateToken(
       dto.token,
       TokenType.PASSWORD_RESET,
@@ -268,6 +377,16 @@ export class AuthService {
         user.name || 'User',
       );
     }
+
+    await this.activityLogService.log({
+      userId: matchedToken.userId,
+      sessionId,
+      moduleName: 'password',
+      actionName: 'password_reset_completed',
+      ipAddress,
+      userAgent,
+      description: `Password reset completed via token`,
+    });
 
     return 'Password reset successful.';
   }
