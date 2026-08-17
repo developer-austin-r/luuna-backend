@@ -140,7 +140,7 @@ export class ActivityLogService implements OnModuleInit {
       }
 
       // 3. Prevent logging sensitive credentials or tokens
-      let sanitizedMetadata: any = metadata;
+      let sanitizedMetadata: Record<string, unknown> | undefined = undefined;
       if (metadata && typeof metadata === 'object') {
         const sensitiveKeywords = [
           'password',
@@ -151,18 +151,19 @@ export class ActivityLogService implements OnModuleInit {
           'key',
           'credential',
         ];
-        sanitizedMetadata = {};
+        const tempMetadata: Record<string, unknown> = {};
         for (const [key, val] of Object.entries(metadata)) {
           const lowerKey = key.toLowerCase();
           const isSensitive = sensitiveKeywords.some((kw) =>
             lowerKey.includes(kw),
           );
           if (isSensitive) {
-            sanitizedMetadata[key] = '[REDACTED]';
+            tempMetadata[key] = '[REDACTED]';
           } else {
-            sanitizedMetadata[key] = val;
+            tempMetadata[key] = val;
           }
         }
+        sanitizedMetadata = tempMetadata;
       }
 
       // 4. Save to database

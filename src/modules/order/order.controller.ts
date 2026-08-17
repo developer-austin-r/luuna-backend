@@ -27,7 +27,7 @@ export class OrderController {
   @ApiCreatedResponse({ description: 'Order created successfully.' })
   async create(@Body() createOrderDto: CreateOrderDto, @Req() req: Request) {
     // Obtain secure user_id from token context if authenticated
-    if ((req.user as { sub?: string } | undefined)?.sub) {
+    if (req.user?.sub) {
       createOrderDto.userId = (req.user as { sub: string }).sub;
     }
     const order = await this.orderService.create(createOrderDto);
@@ -48,7 +48,6 @@ export class OrderController {
           total_amount: Number(order.totalAmount),
         },
       });
-
     }
 
     return order;
@@ -65,7 +64,7 @@ export class OrderController {
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const order = await this.orderService.findOne(id);
     await this.activityLogService.log({
-      userId: (req.user as { sub?: string } | undefined)?.sub,
+      userId: req.user?.sub,
       sessionId: req['sessionId'],
       moduleName: 'order',
       actionName: 'order_viewed',
@@ -87,7 +86,7 @@ export class OrderController {
     const order = await this.orderService.update(id, updateOrderDto);
     if (order) {
       await this.activityLogService.log({
-        userId: (req.user as { sub?: string } | undefined)?.sub,
+        userId: req.user?.sub,
         sessionId: req['sessionId'],
         moduleName: 'order',
         actionName: 'order_status_changed',
@@ -110,7 +109,7 @@ export class OrderController {
     const order = await this.orderService.findOne(id);
     const result = await this.orderService.remove(id);
     await this.activityLogService.log({
-      userId: (req.user as { sub?: string } | undefined)?.sub,
+      userId: req.user?.sub,
       sessionId: req['sessionId'],
       moduleName: 'order',
       actionName: 'order_cancelled',

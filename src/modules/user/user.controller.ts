@@ -41,7 +41,7 @@ export class UserController {
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const user = await this.userService.findOne(id);
     await this.activityLogService.log({
-      userId: (req.user as { sub?: string } | undefined)?.sub,
+      userId: req.user?.sub,
       sessionId: req['sessionId'],
       moduleName: 'profile',
       actionName: 'profile_viewed',
@@ -64,7 +64,7 @@ export class UserController {
 
     if (updateUserDto.password) {
       await this.activityLogService.log({
-        userId: (req.user as { sub?: string } | undefined)?.sub,
+        userId: req.user?.sub,
         sessionId: req['sessionId'],
         moduleName: 'password',
         actionName: 'password_changed',
@@ -75,7 +75,7 @@ export class UserController {
       });
     } else {
       await this.activityLogService.log({
-        userId: (req.user as { sub?: string } | undefined)?.sub,
+        userId: req.user?.sub,
         sessionId: req['sessionId'],
         moduleName: 'profile',
         actionName: 'profile_updated',

@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ActivityLogService } from './activity-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 describe('ActivityLogService', () => {
   let service: ActivityLogService;
-  let prisma: PrismaService;
 
   const mockPrismaService = {
     module: {
@@ -37,7 +36,6 @@ describe('ActivityLogService', () => {
     }).compile();
 
     service = module.get<ActivityLogService>(ActivityLogService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {

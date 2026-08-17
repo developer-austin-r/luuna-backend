@@ -63,7 +63,7 @@ export class ProductController {
     const result = await this.productService.findAll(query);
     if (query.search) {
       await this.activityLogService.log({
-        userId: (req.user as { sub?: string } | undefined)?.sub,
+        userId: req.user?.sub,
         sessionId: req['sessionId'],
         moduleName: 'search',
         actionName: 'search_performed',
@@ -194,7 +194,7 @@ export class ProductController {
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const product = await this.productService.findOne(id);
     await this.activityLogService.log({
-      userId: (req.user as { sub?: string } | undefined)?.sub,
+      userId: req.user?.sub,
       sessionId: req['sessionId'],
       moduleName: 'product',
       actionName: 'product_viewed',

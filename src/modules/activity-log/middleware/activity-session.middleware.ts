@@ -4,7 +4,6 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
 declare global {
   namespace Express {
     interface Request {
@@ -48,7 +47,7 @@ export class ActivitySessionMiddleware implements NestMiddleware {
       if (token) {
         try {
           const secret = this.configService.get<string>('auth.jwtSecret');
-          const payload = this.jwtService.verify(token, { secret }) as Record<string, unknown>;
+          const payload = this.jwtService.verify(token, { secret });
           req.user = payload;
         } catch {
           // Token invalid or expired, ignore and proceed as guest (user_id = null)
