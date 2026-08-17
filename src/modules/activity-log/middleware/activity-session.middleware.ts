@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { JwtService } from '@nestjs/jwt';
@@ -8,6 +9,11 @@ declare global {
   namespace Express {
     interface Request {
       sessionId?: string;
+    }
+    interface User {
+      sub?: string;
+      email?: string;
+      name?: string;
     }
   }
 }
@@ -47,7 +53,10 @@ export class ActivitySessionMiddleware implements NestMiddleware {
       if (token) {
         try {
           const secret = this.configService.get<string>('auth.jwtSecret');
-          const payload = this.jwtService.verify(token, { secret });
+          const payload = this.jwtService.verify<Record<string, unknown>>(
+            token,
+            { secret },
+          );
           req.user = payload;
         } catch {
           // Token invalid or expired, ignore and proceed as guest (user_id = null)
