@@ -12,8 +12,7 @@ import { OrderModule } from './modules/order/order.module';
 import { StorageModule } from './common/storage/storage.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { ActivitySessionMiddleware } from './modules/activity-log/middleware/activity-session.middleware';
-import { CartModule } from './modules/cart/cart.module';
-import { CheckoutModule } from './modules/checkout/checkout.module';
+
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
 
@@ -44,8 +43,6 @@ import { validationSchema } from './common/constants';
     CouponModule,
     OrderModule,
     ActivityLogModule,
-    CartModule,
-    CheckoutModule,
     HealthModule,
   ],
   controllers: [],

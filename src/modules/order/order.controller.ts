@@ -49,21 +49,6 @@ export class OrderController {
         },
       });
 
-      // 2. Log checkout_completed
-      await this.activityLogService.log({
-        userId: order.userId,
-        sessionId: req['sessionId'],
-        moduleName: 'checkout',
-        actionName: 'checkout_completed',
-        entityId: order.id,
-        description: `Completed checkout for order "${order.orderNumber}"`,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'],
-        metadata: {
-          order_number: order.orderNumber,
-          total_amount: Number(order.totalAmount),
-        },
-      });
     }
 
     return order;
