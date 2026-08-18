@@ -22,8 +22,14 @@ import {
 import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/storage/storage.service';
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
+import heicConvert from 'heic-convert';
 
-type UploadedImage = { buffer: Buffer; mimetype: string };
+type UploadedImage = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname?: string;
+};
 const DEFAULT_WAREHOUSE = 'Main Warehouse';
 
 @Injectable()
@@ -35,16 +41,59 @@ export class ProductService {
     private readonly storageService: StorageService,
   ) {}
 
-  /** Stores a binary multipart image and returns the public URL for JSON DTOs. */
-  async uploadImage(file: UploadedImage): Promise<{ url: string }> {
+  /** Stores a binary multipart image and returns the public URL and converted urls. */
+  async uploadImage(
+    file: UploadedImage,
+  ): Promise<{ url: string; originalUrl: string; displayUrl: string }> {
+    const isHeic =
+      file.mimetype === 'image/heic' ||
+      file.mimetype === 'image/heif' ||
+      file.originalname?.toLowerCase().endsWith('.heic') ||
+      file.originalname?.toLowerCase().endsWith('.heif');
+
     const extension = file.mimetype.split('/')[1] || 'bin';
     const key = `uploads/${randomUUID()}.${extension}`;
+
     await this.storageService.uploadFile({
       key,
       buffer: file.buffer,
       mimeType: file.mimetype,
     });
-    return { url: this.storageService.generatePublicUrl(key) };
+
+    const originalUrl = this.storageService.generatePublicUrl(key);
+    let displayUrl = originalUrl;
+
+    if (isHeic) {
+      try {
+        const outputBuffer = await heicConvert({
+          buffer: file.buffer,
+          format: 'JPEG',
+          quality: 0.8,
+        });
+
+        const webpBuffer = await sharp(outputBuffer).webp().toBuffer();
+        const displayKey = `uploads/${randomUUID()}.webp`;
+
+        await this.storageService.uploadFile({
+          key: displayKey,
+          buffer: webpBuffer,
+          mimeType: 'image/webp',
+        });
+
+        displayUrl = this.storageService.generatePublicUrl(displayKey);
+      } catch (convErr) {
+        this.logger.error(
+          'Failed to convert HEIC to WebP, falling back to original HEIC for displayUrl',
+          convErr,
+        );
+      }
+    }
+
+    return {
+      url: displayUrl,
+      originalUrl,
+      displayUrl,
+    };
   }
 
   private serializeBigInt<T>(data: T): T {
@@ -142,6 +191,92 @@ export class ProductService {
   }
 
   /**
+   * Helper to detect and upload product image base64 payload to S3, returning both S3 URLs.
+   * If value is not base64, returns it as both originalUrl and displayUrl.
+   */
+  private async uploadProductImage(
+    value: string | null | undefined,
+    productId: string,
+  ): Promise<{ originalUrl: string | null; displayUrl: string | null }> {
+    if (!value) return { originalUrl: null, displayUrl: null };
+    if (!value.startsWith('data:')) {
+      return { originalUrl: value, displayUrl: value };
+    }
+
+    const match = value.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) {
+      return { originalUrl: value, displayUrl: value };
+    }
+
+    const mimeType = match[1];
+    const base64Data = match[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+    let isHeic = false;
+
+    if (
+      mimeType === 'image/heic' ||
+      mimeType === 'image/heif' ||
+      value.startsWith('data:image/heic') ||
+      value.startsWith('data:image/heif')
+    ) {
+      isHeic = true;
+    }
+
+    try {
+      let extension = 'bin';
+      if (mimeType.includes('/')) {
+        extension = mimeType.split('/')[1];
+      }
+
+      const randomId = Math.random().toString(36).substring(2, 10);
+      const originalKey = `products/${productId}/original-${randomId}.${extension}`;
+
+      await this.storageService.uploadFile({
+        key: originalKey,
+        buffer,
+        mimeType,
+      });
+
+      const originalUrl = this.storageService.generatePublicUrl(originalKey);
+      let displayUrl = originalUrl;
+
+      if (isHeic) {
+        try {
+          const outputBuffer = await heicConvert({
+            buffer,
+            format: 'JPEG',
+            quality: 0.8,
+          });
+
+          const webpBuffer = await sharp(outputBuffer).webp().toBuffer();
+          const displayKey = `products/${productId}/display-${randomId}.webp`;
+
+          await this.storageService.uploadFile({
+            key: displayKey,
+            buffer: webpBuffer,
+            mimeType: 'image/webp',
+          });
+
+          displayUrl = this.storageService.generatePublicUrl(displayKey);
+        } catch (convErr) {
+          this.logger.error(
+            'Failed to convert HEIC to WebP, falling back to original HEIC for displayUrl',
+            convErr,
+          );
+        }
+      }
+
+      return { originalUrl, displayUrl };
+    } catch (err) {
+      this.logger.error(
+        `Failed to upload product image base64 to S3`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      return { originalUrl: value, displayUrl: value };
+    }
+  }
+
+  /**
    * Apply URL resolution to all image/video fields within a product object
    * returned from Prisma, so responses always contain full public URLs.
    */
@@ -151,7 +286,11 @@ export class ProductService {
     if (p.images) {
       p.images = p.images.map((img: any) => ({
         ...img,
-        imageUrl: this.resolveUrl(img.imageUrl) ?? img.imageUrl,
+        originalUrl: this.resolveUrl(img.originalUrl) ?? img.originalUrl,
+        displayUrl: this.resolveUrl(img.displayUrl) ?? img.displayUrl,
+        imageUrl:
+          this.resolveUrl(img.displayUrl || img.imageUrl) ??
+          (img.displayUrl || img.imageUrl),
       }));
     }
     if (p.videos) {
@@ -425,18 +564,37 @@ export class ProductService {
     const productId = randomUUID();
 
     // Map base64 images and upload to S3 BEFORE database transaction
-    const imageCreates: Array<{ imageUrl: string; displayOrder?: number }> = [];
+    const imageCreates: Array<{
+      originalUrl: string;
+      displayUrl: string;
+      imageUrl?: string;
+      displayOrder?: number;
+    }> = [];
     if (images && images.length > 0) {
       for (const img of images) {
-        const storedUrl = await this.uploadIfBase64(
-          img.imageUrl,
-          productId,
-          'image',
-        );
-        imageCreates.push({
-          imageUrl: storedUrl ?? img.imageUrl,
-          displayOrder: img.displayOrder,
-        });
+        if (
+          img.displayUrl &&
+          img.originalUrl &&
+          !img.displayUrl.startsWith('data:')
+        ) {
+          imageCreates.push({
+            originalUrl: img.originalUrl,
+            displayUrl: img.displayUrl,
+            imageUrl: img.displayUrl,
+            displayOrder: img.displayOrder,
+          });
+        } else {
+          const { originalUrl, displayUrl } = await this.uploadProductImage(
+            img.originalUrl || img.imageUrl,
+            productId,
+          );
+          imageCreates.push({
+            originalUrl: originalUrl || '',
+            displayUrl: displayUrl || '',
+            imageUrl: displayUrl || undefined,
+            displayOrder: img.displayOrder,
+          });
+        }
       }
     }
 
@@ -688,7 +846,9 @@ export class ProductService {
     // Sync images: upload base64 to S3 BEFORE database transaction
     const imageUpdates: Array<{
       productId: string;
-      imageUrl: string;
+      originalUrl: string;
+      displayUrl: string;
+      imageUrl: string | null;
       displayOrder: number;
     }> = [];
     if (images !== undefined) {
@@ -698,12 +858,31 @@ export class ProductService {
         );
       }
       for (const img of images) {
-        const storedUrl = await this.uploadIfBase64(img.imageUrl, id, 'image');
-        imageUpdates.push({
-          productId: id,
-          imageUrl: storedUrl ?? img.imageUrl,
-          displayOrder: img.displayOrder ?? 0,
-        });
+        if (
+          img.displayUrl &&
+          img.originalUrl &&
+          !img.displayUrl.startsWith('data:')
+        ) {
+          imageUpdates.push({
+            productId: id,
+            originalUrl: img.originalUrl,
+            displayUrl: img.displayUrl,
+            imageUrl: img.displayUrl,
+            displayOrder: img.displayOrder ?? 0,
+          });
+        } else {
+          const { originalUrl, displayUrl } = await this.uploadProductImage(
+            img.originalUrl || img.imageUrl,
+            id,
+          );
+          imageUpdates.push({
+            productId: id,
+            originalUrl: originalUrl || '',
+            displayUrl: displayUrl || '',
+            imageUrl: displayUrl || null,
+            displayOrder: img.displayOrder ?? 0,
+          });
+        }
       }
     }
 
@@ -846,18 +1025,30 @@ export class ProductService {
       return this.serializeBigInt(this.resolveProductMedia(updated));
     });
   }
-
   async remove(id: string, permanent = false) {
-    const product: any = await this.findOne(id);
+    const product = (await this.findOne(id)) as unknown as {
+      images?: Array<{
+        originalUrl: string | null;
+        displayUrl: string | null;
+        imageUrl: string | null;
+      }>;
+      videos?: Array<{ videoUrl: string }>;
+    };
 
     if (permanent) {
       // Collect all stored media keys for S3 cleanup (best-effort, after DB delete)
       const mediaKeys: string[] = [
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-        ...(product.images ?? []).map(
-          (img: { imageUrl: string }) => img.imageUrl,
+        ...(product.images ?? []).flatMap(
+          (img: {
+            originalUrl: string | null;
+            displayUrl: string | null;
+            imageUrl: string | null;
+          }) =>
+            [img.originalUrl, img.displayUrl, img.imageUrl].filter(
+              Boolean,
+            ) as string[],
         ),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+
         ...(product.videos ?? []).map(
           (vid: { videoUrl: string }) => vid.videoUrl,
         ),
@@ -949,23 +1140,28 @@ export class ProductService {
         'Enforced limit of maximum 7 images per product exceeded',
       );
     }
-    const storedUrl = await this.uploadIfBase64(
-      dto.imageUrl,
+    const { originalUrl, displayUrl } = await this.uploadProductImage(
+      dto.originalUrl || dto.imageUrl,
       productId,
-      'image',
     );
 
     const image = await this.prisma.productImage.create({
       data: {
         productId,
-        imageUrl: storedUrl ?? dto.imageUrl,
+        originalUrl: originalUrl || '',
+        displayUrl: displayUrl || '',
+        imageUrl: displayUrl || null,
         displayOrder: dto.displayOrder ?? 0,
       },
     });
 
     return {
       ...image,
-      imageUrl: this.resolveUrl(image.imageUrl) ?? image.imageUrl,
+      originalUrl: this.resolveUrl(image.originalUrl) ?? image.originalUrl,
+      displayUrl: this.resolveUrl(image.displayUrl) ?? image.displayUrl,
+      imageUrl:
+        this.resolveUrl(image.displayUrl || image.imageUrl) ??
+        (image.displayUrl || image.imageUrl),
     };
   }
 
@@ -977,7 +1173,11 @@ export class ProductService {
     });
     return images.map((img) => ({
       ...img,
-      imageUrl: this.resolveUrl(img.imageUrl) ?? img.imageUrl,
+      originalUrl: this.resolveUrl(img.originalUrl) ?? img.originalUrl,
+      displayUrl: this.resolveUrl(img.displayUrl) ?? img.displayUrl,
+      imageUrl:
+        this.resolveUrl(img.displayUrl || img.imageUrl) ??
+        (img.displayUrl || img.imageUrl),
     }));
   }
 
@@ -998,15 +1198,24 @@ export class ProductService {
     });
 
     // Best-effort S3 cleanup
-    this.storageService.deleteFile(image.imageUrl).catch((err: unknown) => {
-      this.logger.error(
-        `Failed to delete S3 object for image ${imageId}: ${image.imageUrl}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-    });
+    const keysToDelete = [
+      image.originalUrl,
+      image.displayUrl,
+      image.imageUrl,
+    ].filter(Boolean) as string[];
+    for (const key of keysToDelete) {
+      this.storageService.deleteFile(key).catch((err: unknown) => {
+        this.logger.error(
+          `Failed to delete S3 object ${key} for image ${imageId}`,
+          err instanceof Error ? err.stack : String(err),
+        );
+      });
+    }
 
     return {
       ...deleted,
+      originalUrl: this.resolveUrl(deleted.originalUrl) ?? deleted.originalUrl,
+      displayUrl: this.resolveUrl(deleted.displayUrl) ?? deleted.displayUrl,
       imageUrl: this.resolveUrl(deleted.imageUrl) ?? deleted.imageUrl,
     };
   }

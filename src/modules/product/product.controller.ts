@@ -40,7 +40,11 @@ import {
   UpdateCategoryDto,
 } from './dto';
 
-type UploadedImage = { buffer: Buffer; mimetype: string };
+type UploadedImage = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname?: string;
+};
 
 @ApiTags('Products')
 @Controller('products')
@@ -102,8 +106,26 @@ export class ProductController {
           'image/png',
           'image/webp',
           'image/gif',
+          'image/heic',
+          'image/heif',
         ]);
-        callback(null, allowedMimeTypes.has(file.mimetype));
+        const isAllowedMime = allowedMimeTypes.has(file.mimetype);
+
+        // Fallback to checking the file extension (case-insensitive)
+        const extension =
+          file.originalname.split('.').pop()?.toLowerCase() || '';
+        const allowedExtensions = new Set([
+          'jpg',
+          'jpeg',
+          'png',
+          'webp',
+          'gif',
+          'heic',
+          'heif',
+        ]);
+        const isAllowedExt = allowedExtensions.has(extension);
+
+        callback(null, isAllowedMime || isAllowedExt);
       },
     }),
   )
@@ -119,10 +141,14 @@ export class ProductController {
   async uploadImage(@UploadedFile() file?: UploadedImage) {
     if (!file) {
       throw new BadRequestException(
-        'Upload a JPEG, PNG, WebP, or GIF image no larger than 10 MB.',
+        'Upload a JPEG, PNG, WebP, GIF, or HEIC/HEIF image no larger than 10 MB.',
       );
     }
-    return this.productService.uploadImage(file);
+    return this.productService.uploadImage({
+      buffer: file.buffer,
+      mimetype: file.mimetype,
+      originalname: file.originalname,
+    });
   }
 
   @Post('categories')
