@@ -4,7 +4,7 @@ name: Backend Pull Request CI
 on:
   pull_request:
     branches:
-      - main
+      - dev
 
 # Cancel an outdated run when new commits are pushed to the same pull request.
 concurrency:

@@ -28,8 +28,33 @@ export class UserService {
     });
   }
 
-  findAll() {
-    return this.prisma.user.findMany({ select: this.userSelect });
+  async findAll() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        roleId: true,
+        createdAt: true,
+        updatedAt: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      roleId: user.roleId,
+      roleName: user.role?.name ?? '',
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    }));
   }
 
   async findOne(id: string) {
