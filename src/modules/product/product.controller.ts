@@ -14,6 +14,7 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -25,6 +26,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { ProductService } from './product.service';
 import {
   AssignBrandDto,
@@ -39,13 +41,21 @@ import {
   CreateCategoryDto,
   UpdateCategoryDto,
 } from './dto';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
-type UploadedImage = { buffer: Buffer; mimetype: string };
+type UploadedImage = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname?: string;
+};
 
 @ApiTags('Products')
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly activityLogService: ActivityLogService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get paginated list of products with filters' })
@@ -53,8 +63,21 @@ export class ProductController {
     status: HttpStatus.OK,
     description: 'Products fetched successfully.',
   })
-  async findAll(@Query() query: ProductQueryDto) {
-    return this.productService.findAll(query);
+  async findAll(@Query() query: ProductQueryDto, @Req() req: Request) {
+    const result = await this.productService.findAll(query);
+    if (query.search) {
+      await this.activityLogService.log({
+        userId: req.user?.sub,
+        sessionId: req['sessionId'],
+        moduleName: 'search',
+        actionName: 'search_performed',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        description: `Searched catalog for "${query.search}"`,
+        metadata: { keyword: query.search },
+      });
+    }
+    return result;
   }
 
   @Get('categories/all')
@@ -102,8 +125,26 @@ export class ProductController {
           'image/png',
           'image/webp',
           'image/gif',
+          'image/heic',
+          'image/heif',
         ]);
-        callback(null, allowedMimeTypes.has(file.mimetype));
+        const isAllowedMime = allowedMimeTypes.has(file.mimetype);
+
+        // Fallback to checking the file extension (case-insensitive)
+        const extension =
+          file.originalname.split('.').pop()?.toLowerCase() || '';
+        const allowedExtensions = new Set([
+          'jpg',
+          'jpeg',
+          'png',
+          'webp',
+          'gif',
+          'heic',
+          'heif',
+        ]);
+        const isAllowedExt = allowedExtensions.has(extension);
+
+        callback(null, isAllowedMime || isAllowedExt);
       },
     }),
   )
@@ -119,10 +160,14 @@ export class ProductController {
   async uploadImage(@UploadedFile() file?: UploadedImage) {
     if (!file) {
       throw new BadRequestException(
-        'Upload a JPEG, PNG, WebP, or GIF image no larger than 10 MB.',
+        'Upload a JPEG, PNG, WebP, GIF, or HEIC/HEIF image no larger than 10 MB.',
       );
     }
-    return this.productService.uploadImage(file);
+    return this.productService.uploadImage({
+      buffer: file.buffer,
+      mimetype: file.mimetype,
+      originalname: file.originalname,
+    });
   }
 
   @Post('categories')
@@ -172,8 +217,24 @@ export class ProductController {
     status: HttpStatus.NOT_FOUND,
     description: 'Product not found.',
   })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.productService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    const product = await this.productService.findOne(id);
+    await this.activityLogService.log({
+      userId: req.user?.sub,
+      sessionId: req['sessionId'],
+      moduleName: 'product',
+      actionName: 'product_viewed',
+      entityId: id,
+      description: `Viewed product "${product.name}"`,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: {
+        product_id: product.id,
+        product_name: product.name,
+        sku: product.sku,
+      },
+    });
+    return product;
   }
 
   @Post()

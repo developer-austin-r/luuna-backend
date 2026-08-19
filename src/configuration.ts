@@ -20,6 +20,12 @@ export default () => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     s3BaseUrl: process.env.AWS_S3_BASE_URL,
     sesSender: process.env.AWS_SES_SENDER || 'noreply@luuna.com',
+    sesRegion: process.env.AWS_SES_REGION || process.env.AWS_REGION,
+    sesAccessKeyId:
+      process.env.AWS_SES_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
+    sesSecretAccessKey:
+      process.env.AWS_SES_SECRET_ACCESS_KEY ||
+      process.env.AWS_SECRET_ACCESS_KEY,
   },
   auth: {
     jwtSecret: process.env.JWT_SECRET || 'changeme-jwt-secret',

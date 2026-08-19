@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -10,6 +10,9 @@ import { CouponModule } from './modules/coupon/coupon.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrderModule } from './modules/order/order.module';
 import { StorageModule } from './common/storage/storage.module';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module';
+import { ActivitySessionMiddleware } from './modules/activity-log/middleware/activity-session.middleware';
+
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
 
@@ -39,6 +42,7 @@ import { validationSchema } from './common/constants';
     ProductModule,
     CouponModule,
     OrderModule,
+    ActivityLogModule,
     HealthModule,
   ],
   controllers: [],
@@ -49,4 +53,8 @@ import { validationSchema } from './common/constants';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(ActivitySessionMiddleware).forRoutes('*');
+  }
+}

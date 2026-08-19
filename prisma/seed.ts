@@ -6,6 +6,7 @@ import { seedBrands } from './seeders/brands.seed';
 import { seedCategories } from './seeders/categories.seed';
 import { seedStatuses } from './seeders/statuses.seed';
 import { seedRoles } from './seeders/roles.seed';
+import { seedModulesAndActions } from './seeders/activity-log.seed';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ async function main() {
   await seedStatuses(prisma);
   await seedBrands(prisma);
   await seedCategories(prisma);
+  await seedModulesAndActions(prisma);
 
   console.log('Seeding finished successfully.');
 }
