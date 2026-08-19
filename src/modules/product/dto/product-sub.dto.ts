@@ -12,9 +12,18 @@ import {
 } from 'class-validator';
 
 export class CreateProductImageDto {
+  @ApiPropertyOptional({ example: 'https://example.com/images/product-1.jpg' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
   @ApiProperty({ example: 'https://example.com/images/product-1.jpg' })
   @IsString()
-  imageUrl: string;
+  originalUrl: string;
+
+  @ApiProperty({ example: 'https://example.com/images/product-1.jpg' })
+  @IsString()
+  displayUrl: string;
 
   @ApiPropertyOptional({ example: 0, default: 0 })
   @IsOptional()

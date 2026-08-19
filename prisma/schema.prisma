@@ -128,7 +128,9 @@ model ProductCategory {
 model ProductImage {
   id           String  @id @default(uuid()) @map("id")
   productId    String  @map("product_id")
-  imageUrl     String  @map("image_url")
+  imageUrl     String? @map("image_url")
+  originalUrl  String  @default("") @map("original_url")
+  displayUrl   String  @default("") @map("display_url")
   displayOrder Int     @default(0) @map("display_order")
   product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
