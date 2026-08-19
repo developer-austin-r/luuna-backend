@@ -28,11 +28,15 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly activityLogService: ActivityLogService,
+  ) {}
 
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
@@ -46,6 +50,7 @@ export class AuthController {
       signupDto,
       req.ip,
       req.headers['user-agent'],
+      req['sessionId'],
     );
   }
 
@@ -59,8 +64,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Your email has been verified successfully.' })
   @ApiBadRequestResponse({ description: 'Token invalid, used, or expired' })
-  verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
-    return this.authService.verifyEmail(verifyEmailDto.token);
+  verifyEmail(@Body() verifyEmailDto: VerifyEmailDto, @Req() req: Request) {
+    return this.authService.verifyEmail(
+      verifyEmailDto.token,
+      req.ip,
+      req.headers['user-agent'],
+      req['sessionId'],
+    );
   }
 
   @Post('login')
@@ -77,6 +87,7 @@ export class AuthController {
       res,
       req.ip,
       req.headers['user-agent'],
+      req['sessionId'],
     );
   }
 
@@ -93,6 +104,7 @@ export class AuthController {
       forgotPasswordDto,
       req.ip,
       req.headers['user-agent'],
+      req['sessionId'],
     );
   }
 
@@ -106,8 +118,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Password reset successful.' })
   @ApiBadRequestResponse({ description: 'Token invalid, used, or expired' })
-  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
-    return this.authService.resetPassword(resetPasswordDto);
+  resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.resetPassword(
+      resetPasswordDto,
+      req.ip,
+      req.headers['user-agent'],
+      req['sessionId'],
+    );
   }
 
   @Post('refresh')
@@ -133,11 +153,21 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtRefreshGuard) // Require refresh token for logout to identify user
   @ApiOkResponse({ description: 'Logged out successfully.' })
-  logout(
+  async logout(
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     this.authService.logout(user.sub, res);
+    await this.activityLogService.log({
+      userId: user.sub,
+      sessionId: req['sessionId'],
+      moduleName: 'authentication',
+      actionName: 'logout',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      description: 'User logged out',
+    });
     return { message: 'Logged out successfully.' };
   }
 
@@ -147,9 +177,19 @@ export class AuthController {
   @ApiOkResponse({ description: 'Logged out from all devices successfully.' })
   async logoutAll(
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     await this.authService.logoutAll(user.sub, res);
+    await this.activityLogService.log({
+      userId: user.sub,
+      sessionId: req['sessionId'],
+      moduleName: 'authentication',
+      actionName: 'logout',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      description: 'User logged out from all devices',
+    });
     return { message: 'Logged out from all devices successfully.' };
   }
 }
