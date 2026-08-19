@@ -100,13 +100,12 @@ export class UserController {
     return this.userService.remove(id);
   }
 
-@Post(':id/resend-verification')
-async resendVerificationEmail(@Param('id') id: string) {
-  const result =
-    await this.userService.resendVerificationEmail(id);
+  @Post(':id/resend-verification')
+  async resendVerificationEmail(@Param('id') id: string) {
+    const result = await this.userService.resendVerificationEmail(id);
 
-  return {
-    data: result,
-  };
-}
+    return {
+      data: result,
+    };
+  }
 }
