@@ -232,51 +232,49 @@ export class UserService {
   }
 
   async resendVerificationEmail(id: string) {
-  // 1. Find user
-  const user = await this.prisma.user.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      isVerified: true,
-    },
-  });
+    // 1. Find user
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isVerified: true,
+      },
+    });
 
-  if (!user) {
-    throw new NotFoundException(`User with ID ${id} not found`);
-  }
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
 
-  // 2. Don't resend if already verified
-  if (user.isVerified) {
-    throw new BadRequestException(
-      'Email is already verified',
+    // 2. Don't resend if already verified
+    if (user.isVerified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    // 3. Get token expiry
+    const verifyExpiry = this.configService.get<number>(
+      'auth.verificationExpiresInMinutes',
+      1440,
     );
+
+    // 4. Generate new verification token
+    const rawToken = await this.tokenService.generateToken(
+      user.id,
+      TokenType.EMAIL_VERIFICATION,
+      verifyExpiry,
+    );
+
+    // 5. Send verification email
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      user.name || 'User',
+      rawToken,
+    );
+
+    // 6. Return response
+    return {
+      message: 'Verification email sent successfully',
+    };
   }
-
-  // 3. Get token expiry
-  const verifyExpiry = this.configService.get<number>(
-    'auth.verificationExpiresInMinutes',
-    1440,
-  );
-
-  // 4. Generate new verification token
-  const rawToken = await this.tokenService.generateToken(
-    user.id,
-    TokenType.EMAIL_VERIFICATION,
-    verifyExpiry,
-  );
-
-  // 5. Send verification email
-  await this.emailService.sendVerificationEmail(
-    user.email,
-    user.name || 'User',
-    rawToken,
-  );
-
-  // 6. Return response
-  return {
-    message: 'Verification email sent successfully',
-  };
-}
 }
