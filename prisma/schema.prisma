@@ -29,6 +29,7 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   role           Role?     @relation(fields: [roleId], references: [id])
+  status         String    @default("ACTIVE") @map("status")
   tokens         Token[]
   orders         Order[]
   activityLogs   ActivityLog[]
