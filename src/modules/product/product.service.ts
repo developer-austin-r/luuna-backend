@@ -22,8 +22,6 @@ import {
 import { Prisma } from '@prisma/client';
 import { StorageService } from '../../common/storage/storage.service';
 import { randomUUID } from 'crypto';
-import sharp from 'sharp';
-import heicConvert from 'heic-convert';
 
 type UploadedImage = {
   buffer: Buffer;
@@ -41,16 +39,9 @@ export class ProductService {
     private readonly storageService: StorageService,
   ) {}
 
-  /** Stores a binary multipart image and returns the public URL and converted urls. */
   async uploadImage(
     file: UploadedImage,
   ): Promise<{ url: string; originalUrl: string; displayUrl: string }> {
-    const isHeic =
-      file.mimetype === 'image/heic' ||
-      file.mimetype === 'image/heif' ||
-      file.originalname?.toLowerCase().endsWith('.heic') ||
-      file.originalname?.toLowerCase().endsWith('.heif');
-
     const extension = file.mimetype.split('/')[1] || 'bin';
     const key = `uploads/${randomUUID()}.${extension}`;
 
@@ -61,38 +52,11 @@ export class ProductService {
     });
 
     const originalUrl = this.storageService.generatePublicUrl(key);
-    let displayUrl = originalUrl;
-
-    if (isHeic) {
-      try {
-        const outputBuffer = await heicConvert({
-          buffer: file.buffer,
-          format: 'JPEG',
-          quality: 0.8,
-        });
-
-        const webpBuffer = await sharp(outputBuffer).webp().toBuffer();
-        const displayKey = `uploads/${randomUUID()}.webp`;
-
-        await this.storageService.uploadFile({
-          key: displayKey,
-          buffer: webpBuffer,
-          mimeType: 'image/webp',
-        });
-
-        displayUrl = this.storageService.generatePublicUrl(displayKey);
-      } catch (convErr) {
-        this.logger.error(
-          'Failed to convert HEIC to WebP, falling back to original HEIC for displayUrl',
-          convErr,
-        );
-      }
-    }
 
     return {
-      url: displayUrl,
+      url: originalUrl,
       originalUrl,
-      displayUrl,
+      displayUrl: originalUrl,
     };
   }
 
@@ -190,10 +154,6 @@ export class ProductService {
     }
   }
 
-  /**
-   * Helper to detect and upload product image base64 payload to S3, returning both S3 URLs.
-   * If value is not base64, returns it as both originalUrl and displayUrl.
-   */
   private async uploadProductImage(
     value: string | null | undefined,
     productId: string,
@@ -211,16 +171,6 @@ export class ProductService {
     const mimeType = match[1];
     const base64Data = match[2];
     const buffer = Buffer.from(base64Data, 'base64');
-    let isHeic = false;
-
-    if (
-      mimeType === 'image/heic' ||
-      mimeType === 'image/heif' ||
-      value.startsWith('data:image/heic') ||
-      value.startsWith('data:image/heif')
-    ) {
-      isHeic = true;
-    }
 
     try {
       let extension = 'bin';
@@ -238,35 +188,7 @@ export class ProductService {
       });
 
       const originalUrl = this.storageService.generatePublicUrl(originalKey);
-      let displayUrl = originalUrl;
-
-      if (isHeic) {
-        try {
-          const outputBuffer = await heicConvert({
-            buffer,
-            format: 'JPEG',
-            quality: 0.8,
-          });
-
-          const webpBuffer = await sharp(outputBuffer).webp().toBuffer();
-          const displayKey = `products/${productId}/display-${randomId}.webp`;
-
-          await this.storageService.uploadFile({
-            key: displayKey,
-            buffer: webpBuffer,
-            mimeType: 'image/webp',
-          });
-
-          displayUrl = this.storageService.generatePublicUrl(displayKey);
-        } catch (convErr) {
-          this.logger.error(
-            'Failed to convert HEIC to WebP, falling back to original HEIC for displayUrl',
-            convErr,
-          );
-        }
-      }
-
-      return { originalUrl, displayUrl };
+      return { originalUrl, displayUrl: originalUrl };
     } catch (err) {
       this.logger.error(
         `Failed to upload product image base64 to S3`,
@@ -466,6 +388,15 @@ export class ProductService {
       rating = 0,
       ...productData
     } = createProductDto;
+
+    const defaultNote =
+      'Please note: Actual product dimensions and appearance may vary slightly from the description and image provided.';
+    if (
+      productData.description &&
+      !productData.description.includes('Please note:')
+    ) {
+      productData.description = `${productData.description}\n\n${defaultNote}`;
+    }
 
     // Business validations
     if (
@@ -745,6 +676,15 @@ export class ProductService {
       availableStock,
       ...productData
     } = updateProductDto;
+
+    const defaultNote =
+      'Please note: Actual product dimensions and appearance may vary slightly from the description and image provided.';
+    if (
+      productData.description &&
+      !productData.description.includes('Please note:')
+    ) {
+      productData.description = `${productData.description}\n\n${defaultNote}`;
+    }
 
     // Business validations
     const finalBasePrice =

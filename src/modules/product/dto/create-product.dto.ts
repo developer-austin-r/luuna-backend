@@ -134,6 +134,11 @@ export class CreateProductDto {
   @IsUUID()
   statusId: string;
 
+  @ApiPropertyOptional({ example: 'XL' })
+  @IsOptional()
+  @IsString()
+  productSize?: string;
+
   @ApiPropertyOptional({ example: ['123e4567-e89b-12d3-a456-426614174001'] })
   @IsOptional()
   @IsArray()
