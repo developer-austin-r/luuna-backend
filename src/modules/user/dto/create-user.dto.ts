@@ -29,10 +29,8 @@ export class CreateUserDto {
   password: string;
 
   @ApiProperty({
-    example:
-      '00000000-0000-0000-0000-000000000002',
-    description:
-      'Role ID: Admin = ...001, User = ...002',
+    example: '00000000-0000-0000-0000-000000000002',
+    description: 'Role ID: Admin = ...001, User = ...002',
   })
   @IsNotEmpty()
   @IsString()
