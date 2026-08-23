@@ -12,6 +12,7 @@ import { OrderModule } from './modules/order/order.module';
 import { StorageModule } from './common/storage/storage.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { ActivitySessionMiddleware } from './modules/activity-log/middleware/activity-session.middleware';
+import { ReportModule } from './modules/report/report.module';
 
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
@@ -43,6 +44,7 @@ import { validationSchema } from './common/constants';
     CouponModule,
     OrderModule,
     ActivityLogModule,
+    ReportModule,
     HealthModule,
   ],
   controllers: [],
