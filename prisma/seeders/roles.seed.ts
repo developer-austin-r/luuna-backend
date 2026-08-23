@@ -8,8 +8,8 @@ const ROLES = [
   },
   {
     id: '00000000-0000-0000-0000-000000000002',
-    name: 'User',
-    description: 'Standard user access',
+    name: 'Billing User',
+    description: 'Billing user access',
   },
 ];
 
