@@ -8,3 +8,8 @@ node_modules
 # Build output
 dist/
 *.tsbuildinfo
+
+# Admin utility scripts
+scripts/create-admin.ts
+scripts/print-users.ts
+scripts/verify-admin.ts
