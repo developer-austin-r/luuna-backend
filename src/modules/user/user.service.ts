@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { TokenService } from '../token/token.service';
 
-import { TokenType } from '@prisma/client';
+import { Prisma, TokenType } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -25,7 +25,7 @@ export class UserService {
     private readonly emailService: EmailService,
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   // ========================================
   // COMMON USER SELECT
@@ -54,10 +54,7 @@ export class UserService {
   // ========================================
 
   async create(createUserDto: CreateUserDto) {
-    const password = await hash(
-      createUserDto.password,
-      10,
-    );
+    const password = await hash(createUserDto.password, 10);
 
     const role = await this.prisma.role.findUnique({
       where: {
@@ -66,9 +63,7 @@ export class UserService {
     });
 
     if (!role) {
-      throw new BadRequestException(
-        'Invalid role ID',
-      );
+      throw new BadRequestException('Invalid role ID');
     }
 
     const user = await this.prisma.user.create({
@@ -83,18 +78,16 @@ export class UserService {
       select: this.userSelect,
     });
 
-    const verifyExpiry =
-      this.configService.get<number>(
-        'auth.verificationExpiresInMinutes',
-        1440,
-      );
+    const verifyExpiry = this.configService.get<number>(
+      'auth.verificationExpiresInMinutes',
+      1440,
+    );
 
-    const rawToken =
-      await this.tokenService.generateToken(
-        user.id,
-        TokenType.EMAIL_VERIFICATION,
-        verifyExpiry,
-      );
+    const rawToken = await this.tokenService.generateToken(
+      user.id,
+      TokenType.EMAIL_VERIFICATION,
+      verifyExpiry,
+    );
 
     await this.emailService.sendVerificationEmail(
       user.email,
@@ -136,7 +129,7 @@ export class UserService {
     // WHERE CONDITION
     // ========================================
 
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
 
     // Search
     if (search) {
@@ -192,40 +185,33 @@ export class UserService {
       'updatedAt',
     ];
 
-    const safeSortBy =
-      allowedSortFields.includes(sortBy)
-        ? sortBy
-        : 'name';
+    const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'name';
 
-    const safeSortDir =
-      sortDir === 'desc'
-        ? 'desc'
-        : 'asc';
+    const safeSortDir = sortDir === 'desc' ? 'desc' : 'asc';
 
     // ========================================
     // GET DATA + COUNT
     // ========================================
 
-    const [users, total] =
-      await this.prisma.$transaction([
-        this.prisma.user.findMany({
-          where,
+    const [users, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
 
-          skip,
+        skip,
 
-          take: limit,
+        take: limit,
 
-          orderBy: {
-            [safeSortBy]: safeSortDir,
-          },
+        orderBy: {
+          [safeSortBy]: safeSortDir,
+        },
 
-          select: this.userSelect,
-        }),
+        select: this.userSelect,
+      }),
 
-        this.prisma.user.count({
-          where,
-        }),
-      ]);
+      this.prisma.user.count({
+        where,
+      }),
+    ]);
 
     // ========================================
     // FORMAT USERS
@@ -247,8 +233,7 @@ export class UserService {
     // PAGINATION DETAILS
     // ========================================
 
-    const totalPages =
-      Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / limit);
 
     return {
       data,
@@ -259,11 +244,9 @@ export class UserService {
         total,
         totalPages,
 
-        hasNextPage:
-          page < totalPages,
+        hasNextPage: page < totalPages,
 
-        hasPreviousPage:
-          page > 1,
+        hasPreviousPage: page > 1,
       },
     };
   }
@@ -273,19 +256,16 @@ export class UserService {
   // ========================================
 
   async findOne(id: string) {
-    const user =
-      await this.prisma.user.findUnique({
-        where: {
-          id,
-        },
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id,
+      },
 
-        select: this.userSelect,
-      });
+      select: this.userSelect,
+    });
 
     if (!user) {
-      throw new NotFoundException(
-        `User with ID ${id} not found`,
-      );
+      throw new NotFoundException(`User with ID ${id} not found`);
     }
 
     return {
@@ -305,33 +285,25 @@ export class UserService {
   // UPDATE USER
   // ========================================
 
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-  ) {
+  async update(id: string, updateUserDto: UpdateUserDto) {
     await this.findOne(id);
 
-    const user =
-      await this.prisma.user.update({
-        where: {
-          id,
-        },
+    const user = await this.prisma.user.update({
+      where: {
+        id,
+      },
 
-        data: {
-          email: updateUserDto.email,
-          name: updateUserDto.name,
+      data: {
+        email: updateUserDto.email,
+        name: updateUserDto.name,
 
-          password:
-            updateUserDto.password
-              ? await hash(
-                updateUserDto.password,
-                10,
-              )
-              : undefined,
-        },
+        password: updateUserDto.password
+          ? await hash(updateUserDto.password, 10)
+          : undefined,
+      },
 
-        select: this.userSelect,
-      });
+      select: this.userSelect,
+    });
 
     return {
       id: user.id,
@@ -353,14 +325,13 @@ export class UserService {
   async remove(id: string) {
     await this.findOne(id);
 
-    const user =
-      await this.prisma.user.delete({
-        where: {
-          id,
-        },
+    const user = await this.prisma.user.delete({
+      where: {
+        id,
+      },
 
-        select: this.userSelect,
-      });
+      select: this.userSelect,
+    });
 
     return {
       id: user.id,
@@ -380,44 +351,37 @@ export class UserService {
   // ========================================
 
   async resendVerificationEmail(id: string) {
-    const user =
-      await this.prisma.user.findUnique({
-        where: {
-          id,
-        },
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id,
+      },
 
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          isVerified: true,
-        },
-      });
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isVerified: true,
+      },
+    });
 
     if (!user) {
-      throw new NotFoundException(
-        `User with ID ${id} not found`,
-      );
+      throw new NotFoundException(`User with ID ${id} not found`);
     }
 
     if (user.isVerified) {
-      throw new BadRequestException(
-        'Email is already verified',
-      );
+      throw new BadRequestException('Email is already verified');
     }
 
-    const verifyExpiry =
-      this.configService.get<number>(
-        'auth.verificationExpiresInMinutes',
-        1440,
-      );
+    const verifyExpiry = this.configService.get<number>(
+      'auth.verificationExpiresInMinutes',
+      1440,
+    );
 
-    const rawToken =
-      await this.tokenService.generateToken(
-        user.id,
-        TokenType.EMAIL_VERIFICATION,
-        verifyExpiry,
-      );
+    const rawToken = await this.tokenService.generateToken(
+      user.id,
+      TokenType.EMAIL_VERIFICATION,
+      verifyExpiry,
+    );
 
     await this.emailService.sendVerificationEmail(
       user.email,
@@ -426,8 +390,7 @@ export class UserService {
     );
 
     return {
-      message:
-        'Verification email sent successfully',
+      message: 'Verification email sent successfully',
     };
   }
 }

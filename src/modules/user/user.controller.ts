@@ -11,11 +11,7 @@ import {
   Req,
 } from '@nestjs/common';
 
-import {
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -32,7 +28,7 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly activityLogService: ActivityLogService,
-  ) { }
+  ) {}
 
   // ========================================
   // CREATE
@@ -66,10 +62,7 @@ export class UserController {
   @ApiOkResponse({
     description: 'Returns a user by ID.',
   })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request,
-  ) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const user = await this.userService.findOne(id);
 
     await this.activityLogService.log({
@@ -99,10 +92,7 @@ export class UserController {
     @Body() updateUserDto: UpdateUserDto,
     @Req() req: Request,
   ) {
-    const user = await this.userService.update(
-      id,
-      updateUserDto,
-    );
+    const user = await this.userService.update(id, updateUserDto);
 
     if (updateUserDto.password) {
       await this.activityLogService.log({
@@ -126,9 +116,9 @@ export class UserController {
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
         metadata: {
-          updated_fields: Object.keys(
-            updateUserDto,
-          ).filter((k) => k !== 'password'),
+          updated_fields: Object.keys(updateUserDto).filter(
+            (k) => k !== 'password',
+          ),
         },
       });
     }
