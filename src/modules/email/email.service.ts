@@ -76,6 +76,7 @@ export class EmailService {
 
   async sendVerificationEmail(to: string, name: string, token: string) {
     const verificationUrl = `${this.configService.get<string>('auth.frontendVerificationUrl')}?token=${token}`;
+    console.log('verificationUrl', verificationUrl);
     const html = getVerificationTemplate(name, verificationUrl);
     await this.sendEmail(to, 'Verify your email address - Luuna', html);
   }

@@ -125,8 +125,7 @@ export class ProductController {
           'image/png',
           'image/webp',
           'image/gif',
-          'image/heic',
-          'image/heif',
+          'image/avif',
         ]);
         const isAllowedMime = allowedMimeTypes.has(file.mimetype);
 
@@ -139,8 +138,7 @@ export class ProductController {
           'png',
           'webp',
           'gif',
-          'heic',
-          'heif',
+          'avif',
         ]);
         const isAllowedExt = allowedExtensions.has(extension);
 
@@ -160,7 +158,7 @@ export class ProductController {
   async uploadImage(@UploadedFile() file?: UploadedImage) {
     if (!file) {
       throw new BadRequestException(
-        'Upload a JPEG, PNG, WebP, GIF, or HEIC/HEIF image no larger than 10 MB.',
+        'Upload a JPEG, PNG, WebP, AVIF, or GIF image no larger than 10 MB.',
       );
     }
     return this.productService.uploadImage({

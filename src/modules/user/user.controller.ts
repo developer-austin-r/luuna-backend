@@ -7,12 +7,18 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
+
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { GetUsersQueryDto } from './dto/get-users-query.dto';
+
 import { UserService } from './user.service';
+
 import type { Request } from 'express';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 
@@ -24,22 +30,41 @@ export class UserController {
     private readonly activityLogService: ActivityLogService,
   ) {}
 
+  // ========================================
+  // CREATE
+  // ========================================
+
   @Post()
-  @ApiCreatedResponse({ description: 'User created successfully.' })
+  @ApiCreatedResponse({
+    description: 'User created successfully.',
+  })
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
 
+  // ========================================
+  // GET USERS WITH PAGINATION + FILTER
+  // ========================================
+
   @Get()
-  @ApiOkResponse({ description: 'Returns all users.' })
-  findAll() {
-    return this.userService.findAll();
+  @ApiOkResponse({
+    description: 'Returns paginated users.',
+  })
+  findAll(@Query() query: GetUsersQueryDto) {
+    return this.userService.findAll(query);
   }
 
+  // ========================================
+  // GET USER BY ID
+  // ========================================
+
   @Get(':id')
-  @ApiOkResponse({ description: 'Returns a user by ID.' })
+  @ApiOkResponse({
+    description: 'Returns a user by ID.',
+  })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const user = await this.userService.findOne(id);
+
     await this.activityLogService.log({
       userId: req.user?.sub,
       sessionId: req['sessionId'],
@@ -50,11 +75,18 @@ export class UserController {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
+
     return user;
   }
 
+  // ========================================
+  // UPDATE
+  // ========================================
+
   @Patch(':id')
-  @ApiOkResponse({ description: 'User updated successfully.' })
+  @ApiOkResponse({
+    description: 'User updated successfully.',
+  })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -94,9 +126,24 @@ export class UserController {
     return user;
   }
 
+  // ========================================
+  // DELETE
+  // ========================================
+
   @Delete(':id')
-  @ApiOkResponse({ description: 'User deleted successfully.' })
+  @ApiOkResponse({
+    description: 'User deleted successfully.',
+  })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.userService.remove(id);
+  }
+
+  @Post(':id/resend-verification')
+  async resendVerificationEmail(@Param('id') id: string) {
+    const result = await this.userService.resendVerificationEmail(id);
+
+    return {
+      data: result,
+    };
   }
 }
