@@ -12,24 +12,26 @@ model Role {
   description String?  @map("description")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  users       User[]
+
+  users           User[]
+  rolePermissions RolePermission[]
 
   @@map("roles")
 }
 
 model User {
-  id             String    @id @default(uuid()) @map("id")
-  email          String    @unique @map("email")
-  name           String?   @map("name")
-  password       String    @map("password")
-  isVerified     Boolean   @default(false) @map("is_verified")
-  roleId         String?   @map("role_id")
-  failedAttempts Int       @default(0) @map("failed_attempts")
-  lockedUntil    DateTime? @map("locked_until")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  role           Role?     @relation(fields: [roleId], references: [id])
-  status         String    @default("ACTIVE") @map("status")
+  id             String        @id @default(uuid()) @map("id")
+  email          String        @unique @map("email")
+  name           String?       @map("name")
+  password       String        @map("password")
+  isVerified     Boolean       @default(false) @map("is_verified")
+  roleId         String?       @map("role_id")
+  failedAttempts Int           @default(0) @map("failed_attempts")
+  lockedUntil    DateTime?     @map("locked_until")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  role           Role?         @relation(fields: [roleId], references: [id])
+  status         String        @default("ACTIVE") @map("status")
   tokens         Token[]
   orders         Order[]
   activityLogs   ActivityLog[]
@@ -55,7 +57,7 @@ model Category {
   slug              String            @unique @map("slug")
   parentId          String?           @map("parent_id")
   image             String?           @map("image")
-  description       String?           @db.Text @map("description")
+  description       String?           @map("description") @db.Text
   status            Boolean           @default(true) @map("status")
   isDeleted         Boolean           @default(false) @map("is_deleted")
   createdAt         DateTime          @default(now()) @map("created_at")
@@ -84,12 +86,12 @@ model Product {
   name              String            @map("name")
   slug              String            @unique @map("slug")
   shortDescription  String?           @map("short_description")
-  description       String?           @db.Text @map("description")
+  description       String?           @map("description") @db.Text
   brandId           String?           @map("brand_id")
-  basePrice         Decimal           @db.Decimal(10, 2) @map("base_price")
-  discountPrice     Decimal?          @db.Decimal(10, 2) @map("discount_price")
-  taxPercentage     Decimal           @default(0.00) @db.Decimal(5, 2) @map("tax_percentage")
-  finalPrice        Decimal           @db.Decimal(10, 2) @map("final_price")
+  basePrice         Decimal           @map("base_price") @db.Decimal(10, 2)
+  discountPrice     Decimal?          @map("discount_price") @db.Decimal(10, 2)
+  taxPercentage     Decimal           @default(0.00) @map("tax_percentage") @db.Decimal(5, 2)
+  finalPrice        Decimal           @map("final_price") @db.Decimal(10, 2)
   stock             Int               @default(0) @map("stock")
   reservedStock     Int               @default(0) @map("reserved_stock")
   availableStock    Int               @default(0) @map("available_stock")
@@ -192,14 +194,14 @@ model Coupon {
   id                 String       @id @default(uuid()) @map("id")
   code               String       @unique @map("code")
   discountType       DiscountType @map("discount_type")
-  discountValue      Decimal      @db.Decimal(10,2) @map("discount_value")
-  minimumOrderAmount Decimal      @default(0.00) @db.Decimal(10,2) @map("minimum_order_amount")
+  discountValue      Decimal      @map("discount_value") @db.Decimal(10, 2)
+  minimumOrderAmount Decimal      @default(0.00) @map("minimum_order_amount") @db.Decimal(10, 2)
   redemptionLimit    Int?         @map("redemption_limit")
   redeemedCount      Int          @default(0) @map("redeemed_count")
   activeDate         DateTime     @default(now()) @map("active_date")
   expiryDate         DateTime     @map("expiry_date")
   status             CouponStatus @default(ACTIVE) @map("status")
-  description        String?      @db.Text @map("description")
+  description        String?      @map("description") @db.Text
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
   deletedAt          DateTime?    @map("deleted_at")
@@ -280,12 +282,12 @@ model Order {
   orderStatus    OrderStatus   @default(PENDING) @map("order_status")
   paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
   paymentMethod  PaymentMethod @map("payment_method")
-  subtotal       Decimal       @db.Decimal(10, 2) @map("subtotal")
-  discount       Decimal       @default(0.00) @db.Decimal(10, 2) @map("discount")
-  tax            Decimal       @default(0.00) @db.Decimal(10, 2) @map("tax")
-  shippingCharge Decimal       @default(0.00) @db.Decimal(10, 2) @map("shipping_charge")
-  totalAmount    Decimal       @db.Decimal(10, 2) @map("total_amount")
-  notes          String?       @db.Text @map("notes")
+  subtotal       Decimal       @map("subtotal") @db.Decimal(10, 2)
+  discount       Decimal       @default(0.00) @map("discount") @db.Decimal(10, 2)
+  tax            Decimal       @default(0.00) @map("tax") @db.Decimal(10, 2)
+  shippingCharge Decimal       @default(0.00) @map("shipping_charge") @db.Decimal(10, 2)
+  totalAmount    Decimal       @map("total_amount") @db.Decimal(10, 2)
+  notes          String?       @map("notes") @db.Text
   orderedAt      DateTime      @default(now()) @map("ordered_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
   user           User          @relation(fields: [userId], references: [id])
@@ -302,10 +304,10 @@ model OrderItem {
   orderId   String  @map("order_id")
   productId String  @map("product_id")
   quantity  Int     @map("quantity")
-  price     Decimal @db.Decimal(10, 2) @map("price")
-  discount  Decimal @default(0.00) @db.Decimal(10, 2) @map("discount")
-  tax       Decimal @default(0.00) @db.Decimal(10, 2) @map("tax")
-  total     Decimal @db.Decimal(10, 2) @map("total")
+  price     Decimal @map("price") @db.Decimal(10, 2)
+  discount  Decimal @default(0.00) @map("discount") @db.Decimal(10, 2)
+  tax       Decimal @default(0.00) @map("tax") @db.Decimal(10, 2)
+  total     Decimal @map("total") @db.Decimal(10, 2)
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
 
@@ -320,7 +322,7 @@ model Shipment {
   trackingNumber  String?        @map("tracking_number")
   courierName     String?        @map("courier_name")
   shipmentStatus  ShipmentStatus @default(PENDING) @map("shipment_status")
-  shippingAddress String         @db.Text @map("shipping_address")
+  shippingAddress String         @map("shipping_address") @db.Text
   city            String         @map("city")
   state           String         @map("state")
   postalCode      String         @map("postal_code")
@@ -337,27 +339,27 @@ model Shipment {
 }
 
 model Module {
-  id          BigInt        @id @default(autoincrement()) @map("id")
-  name        String        @unique @db.VarChar(100) @map("name")
-  description String?       @db.VarChar(255) @map("description")
-  isActive    Boolean       @default(true) @map("is_active")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  actions     Action[]
+  id           BigInt        @id @default(autoincrement()) @map("id")
+  name         String        @unique @map("name") @db.VarChar(100)
+  description  String?       @map("description") @db.VarChar(255)
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  actions      Action[]
   activityLogs ActivityLog[]
 
   @@map("modules")
 }
 
 model Action {
-  id          BigInt        @id @default(autoincrement()) @map("id")
-  moduleId    BigInt        @map("module_id")
-  name        String        @db.VarChar(100) @map("name")
-  description String?       @db.VarChar(255) @map("description")
-  isActive    Boolean       @default(true) @map("is_active")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  module      Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  id           BigInt        @id @default(autoincrement()) @map("id")
+  moduleId     BigInt        @map("module_id")
+  name         String        @map("name") @db.VarChar(100)
+  description  String?       @map("description") @db.VarChar(255)
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  module       Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   activityLogs ActivityLog[]
 
   @@unique([moduleId, name])
@@ -366,24 +368,24 @@ model Action {
 }
 
 model ActivityLog {
-  id          BigInt        @id @default(autoincrement()) @map("id")
-  userId      String?       @map("user_id")
-  sessionId   String?       @db.VarChar(100) @map("session_id")
-  moduleId    BigInt        @map("module_id")
-  actionId    BigInt        @map("action_id")
-  entityId    String?       @map("entity_id")
-  description String?       @db.VarChar(500) @map("description")
-  ipAddress   String?       @db.VarChar(45) @map("ip_address")
-  userAgent   String?       @db.Text @map("user_agent")
-  deviceType  String?       @db.VarChar(20) @map("device_type")
-  browser     String?       @db.VarChar(50) @map("browser")
-  os          String?       @db.VarChar(50) @map("os")
-  metadata    Json?         @map("metadata")
-  createdAt   DateTime      @default(now()) @map("created_at")
+  id          BigInt   @id @default(autoincrement()) @map("id")
+  userId      String?  @map("user_id")
+  sessionId   String?  @map("session_id") @db.VarChar(100)
+  moduleId    BigInt   @map("module_id")
+  actionId    BigInt   @map("action_id")
+  entityId    String?  @map("entity_id")
+  description String?  @map("description") @db.VarChar(500)
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.Text
+  deviceType  String?  @map("device_type") @db.VarChar(20)
+  browser     String?  @map("browser") @db.VarChar(50)
+  os          String?  @map("os") @db.VarChar(50)
+  metadata    Json?    @map("metadata")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  module      Module        @relation(fields: [moduleId], references: [id])
-  action      Action        @relation(fields: [actionId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  module Module @relation(fields: [moduleId], references: [id])
+  action Action @relation(fields: [actionId], references: [id])
 
   @@index([userId, createdAt])
   @@index([sessionId, createdAt])
@@ -394,3 +396,57 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
+model Permission {
+  id          String  @id @default(uuid()) @map("id")
+  name        String  @map("name")
+  slug        String  @unique @map("slug")
+  description String? @map("description")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  rolePermissions RolePermission[]
+  menus           Menu[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @map("id")
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Menu {
+  id           String  @id @default(uuid()) @map("id")
+  name         String  @map("name")
+  slug         String  @unique @map("slug")
+  permissionId String? @map("permission_id")
+  parentId     String? @map("parent_id")
+  sortOrder    Int     @default(0) @map("sort_order")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  permission Permission? @relation(fields: [permissionId], references: [id])
+
+  parent   Menu?  @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children Menu[] @relation("MenuHierarchy")
+
+  @@index([permissionId])
+  @@index([parentId])
+  @@map("menus")
+}
