@@ -17,6 +17,7 @@ import { EmailService } from '../email/email.service';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { TokenType } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { RbacService, MenuNode } from '../rbac/rbac.service';
 
 const INVALID_CREDENTIALS = 'Invalid email or password.';
 const EMAIL_NOT_VERIFIED = 'Email is not verified. Please check your inbox.';
@@ -26,6 +27,12 @@ export type SafeUser = {
   email: string;
   name: string | null;
   role: string | null;
+};
+
+export type AuthResponse = {
+  user: SafeUser;
+  permissions: string[];
+  menus: MenuNode[];
 };
 
 @Injectable()
@@ -47,6 +54,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly emailService: EmailService,
     private readonly activityLogService: ActivityLogService,
+    private readonly rbacService: RbacService,
   ) {
     this.jwtSecret = this.configService.get<string>('auth.jwtSecret')!;
     this.jwtRefreshSecret = this.configService.get<string>(
@@ -168,7 +176,7 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
     sessionId?: string,
-  ): Promise<{ user: SafeUser }> {
+  ): Promise<AuthResponse> {
     const user = await this.authRepository.findUserByEmail(dto.email);
 
     if (!user) {
@@ -275,6 +283,13 @@ export class AuthService {
       metadata: { email: user.email },
     });
 
+    // Fetch RBAC data
+    const roleId = user.role?.id ?? null;
+    const permissions = roleId
+      ? await this.rbacService.getPermissionsForRole(roleId)
+      : [];
+    const menus = await this.rbacService.getMenusForPermissions(permissions);
+
     return {
       user: {
         id: user.id,
@@ -282,6 +297,8 @@ export class AuthService {
         name: user.name,
         role: user.role?.name ?? null,
       },
+      permissions,
+      menus,
     };
   }
 
@@ -396,7 +413,7 @@ export class AuthService {
     res: Response,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ user: SafeUser }> {
+  ): Promise<AuthResponse> {
     const user = await this.authRepository.findUserByEmail(payload.email);
     if (
       !user ||
@@ -426,6 +443,13 @@ export class AuthService {
 
     this.setAuthCookies(res, accessToken, refreshToken, true);
 
+    // Fetch RBAC data
+    const roleId = user.role?.id ?? null;
+    const permissions = roleId
+      ? await this.rbacService.getPermissionsForRole(roleId)
+      : [];
+    const menus = await this.rbacService.getMenusForPermissions(permissions);
+
     return {
       user: {
         id: user.id,
@@ -433,6 +457,8 @@ export class AuthService {
         name: user.name,
         role: user.role?.name ?? null,
       },
+      permissions,
+      menus,
     };
   }
 
