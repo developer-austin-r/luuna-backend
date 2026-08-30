@@ -28,14 +28,16 @@ function calculateEan13Checksum(digits12: string): number {
   return (10 - remainder) % 10;
 }
 
-async function generateUniqueBarcodeValue(prisma: PrismaClient): Promise<string> {
+async function generateUniqueBarcodeValue(
+  prisma: PrismaClient,
+): Promise<string> {
   const prefix = '200';
   let attempts = 0;
   const maxAttempts = 100;
 
   while (attempts < maxAttempts) {
     attempts++;
-    
+
     // Generate 9 random digits
     let randomDigits = '';
     for (let i = 0; i < 9; i++) {
@@ -56,7 +58,9 @@ async function generateUniqueBarcodeValue(prisma: PrismaClient): Promise<string>
     }
   }
 
-  throw new Error('Failed to generate a unique barcode value after multiple attempts');
+  throw new Error(
+    'Failed to generate a unique barcode value after multiple attempts',
+  );
 }
 
 async function main() {
@@ -76,13 +80,9 @@ async function main() {
 
   try {
     // 1. Fetch products where barcode is missing or empty
-    // @ts-ignore - Bypass IDE complaining about newly added schema fields
     const products = await prisma.product.findMany({
       where: {
-        OR: [
-          { barcode: null },
-          { barcode: '' },
-        ],
+        OR: [{ barcode: null }, { barcode: '' }],
       },
       select: {
         id: true,
@@ -92,17 +92,21 @@ async function main() {
     });
 
     if (products.length === 0) {
-      console.log('✅  No products found with missing barcodes. Everything is up to date.');
+      console.log(
+        '✅  No products found with missing barcodes. Everything is up to date.',
+      );
       return;
     }
 
-    console.log(`🔍  Found ${products.length} product(s) with missing barcodes. Starting backfill...`);
+    console.log(
+      `🔍  Found ${products.length} product(s) with missing barcodes. Starting backfill...`,
+    );
 
     let successCount = 0;
     for (const product of products) {
       try {
         const barcodeValue = await generateUniqueBarcodeValue(prisma);
-        
+
         await prisma.product.update({
           where: { id: product.id },
           data: { barcode: barcodeValue },
@@ -111,11 +115,16 @@ async function main() {
         console.log(`   ✓ [${product.sku}] ${product.name} → ${barcodeValue}`);
         successCount++;
       } catch (productErr) {
-        console.error(`   ✗ Failed to generate barcode for product [${product.sku}] ${product.name}:`, productErr);
+        console.error(
+          `   ✗ Failed to generate barcode for product [${product.sku}] ${product.name}:`,
+          productErr,
+        );
       }
     }
 
-    console.log(`\n🎉  Backfill complete. Successfully updated ${successCount}/${products.length} product(s).\n`);
+    console.log(
+      `\n🎉  Backfill complete. Successfully updated ${successCount}/${products.length} product(s).\n`,
+    );
   } finally {
     await prisma.$disconnect();
     await pool.end();
