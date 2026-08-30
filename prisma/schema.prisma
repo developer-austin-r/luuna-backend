@@ -85,6 +85,7 @@ model Status {
 model Product {
   id                String            @id @default(uuid()) @map("id")
   sku               String            @unique @map("sku")
+  barcode           String?           @unique @map("barcode")
   name              String            @map("name")
   slug              String            @unique @map("slug")
   shortDescription  String?           @map("short_description")

@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BarcodeService } from './barcode.service';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
@@ -37,6 +38,7 @@ export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly barcodeService: BarcodeService,
   ) {}
 
   async uploadImage(
@@ -372,6 +374,7 @@ export class ProductService {
   async create(createProductDto: CreateProductDto) {
     const {
       sku,
+      barcode,
       slug,
       brandId,
       brandName,
@@ -433,6 +436,21 @@ export class ProductService {
       throw new BadRequestException(
         'Enforced limit of maximum 1 video per product',
       );
+    }
+
+    // Resolve and validate barcode
+    let finalBarcode = barcode;
+    if (!finalBarcode) {
+      finalBarcode = await this.barcodeService.generateUniqueBarcodeValue();
+    } else {
+      const existingBarcode = await this.prisma.product.findUnique({
+        where: { barcode: finalBarcode },
+      });
+      if (existingBarcode) {
+        throw new ConflictException(
+          `Product with Barcode "${finalBarcode}" already exists`,
+        );
+      }
     }
 
     // Check for SKU / Slug conflicts
@@ -569,6 +587,7 @@ export class ProductService {
           ...productData,
           id: productId,
           sku,
+          barcode: finalBarcode,
           slug,
           brandId: finalBrandId,
           basePrice: new Prisma.Decimal(basePrice),
@@ -660,6 +679,7 @@ export class ProductService {
 
     const {
       sku,
+      barcode,
       slug,
       brandId,
       brandName,
@@ -723,6 +743,21 @@ export class ProductService {
 
     if (rating !== undefined && (rating < 0 || rating > 5)) {
       throw new BadRequestException('Rating must be between 0 and 5');
+    }
+
+    // Check Barcode uniqueness if changed
+    if (barcode && barcode !== existing.barcode) {
+      const conflictBarcode = await this.prisma.product.findFirst({
+        where: {
+          barcode,
+          id: { not: id },
+        },
+      });
+      if (conflictBarcode) {
+        throw new ConflictException(
+          `Product with Barcode "${barcode}" already exists`,
+        );
+      }
     }
 
     // Check SKU / Slug uniqueness if changed
@@ -919,6 +954,7 @@ export class ProductService {
         data: {
           ...productData,
           sku,
+          barcode,
           slug,
           brandId: finalBrandId !== undefined ? finalBrandId : undefined,
           basePrice:

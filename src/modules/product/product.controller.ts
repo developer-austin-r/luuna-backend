@@ -15,6 +15,7 @@ import {
   UploadedFile,
   UseInterceptors,
   Req,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -26,8 +27,9 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { ProductService } from './product.service';
+import { BarcodeService } from './barcode.service';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
@@ -55,6 +57,7 @@ export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly activityLogService: ActivityLogService,
+    private readonly barcodeService: BarcodeService,
   ) {}
 
   @Get()
@@ -233,6 +236,28 @@ export class ProductController {
       },
     });
     return product;
+  }
+
+  @Get(':id/barcode')
+  @ApiOperation({ summary: 'Get dynamically generated barcode image' })
+  @ApiParam({ name: 'id', description: 'Product UUID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Barcode image retrieved successfully.',
+  })
+  async getBarcodeImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    const product = await this.productService.findOne(id);
+    if (!product.barcode) {
+      throw new BadRequestException('Product does not have a barcode assigned');
+    }
+    const buffer = await this.barcodeService.generateBarcodeImage(
+      product.barcode,
+    );
+    res.setHeader('Content-Type', 'image/png');
+    res.send(buffer);
   }
 
   @Post()
