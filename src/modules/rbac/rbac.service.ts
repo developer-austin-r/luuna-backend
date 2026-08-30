@@ -38,9 +38,7 @@ export class RbacService {
    * Menus with no permissionId are always included (public menus).
    * Children are nested under their parent.
    */
-  async getMenusForPermissions(
-    allowedSlugs: string[],
-  ): Promise<MenuNode[]> {
+  async getMenusForPermissions(allowedSlugs: string[]): Promise<MenuNode[]> {
     const allowedSet = new Set(allowedSlugs);
 
     const allMenus = await this.prisma.menu.findMany({
