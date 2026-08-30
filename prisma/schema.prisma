@@ -7,12 +7,16 @@ generator client {
 }
 
 model Role {
-  id          String   @id @default(uuid()) @map("id")
-  name        String   @unique @map("name")
-  description String?  @map("description")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  users       User[]
+  id          String    @id @default(uuid()) @map("id")
+  name        String    @unique @map("name")
+  slug        String    @unique @map("slug")
+  description String?   @map("description")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  users           User[]
+  rolePermissions RolePermission[]
 
   @@map("roles")
 }
@@ -295,6 +299,64 @@ model Order {
   @@index([userId])
   @@index([orderNumber])
   @@map("orders")
+}
+
+// ──────────────────────────────────────────────────────────────
+// RBAC
+// ──────────────────────────────────────────────────────────────
+
+model Permission {
+  id          String    @id @default(uuid()) @map("id")
+  name        String    @map("name")
+  slug        String    @unique @map("slug")
+  description String?   @map("description")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  rolePermissions RolePermission[]
+  menus           Menu[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @map("id")
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Menu {
+  id           String  @id @default(uuid()) @map("id")
+  name         String  @map("name")
+  slug         String  @unique @map("slug")
+  icon         String? @map("icon")
+  permissionId String? @map("permission_id")
+  parentId     String? @map("parent_id")
+  sortOrder    Int     @default(0) @map("sort_order")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  permission Permission? @relation(fields: [permissionId], references: [id])
+  parent     Menu?       @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children   Menu[]      @relation("MenuHierarchy")
+
+  @@index([permissionId])
+  @@index([parentId])
+  @@map("menus")
 }
 
 model OrderItem {
