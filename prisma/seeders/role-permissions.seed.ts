@@ -70,14 +70,11 @@ const ROLE_PERMISSIONS: { roleId: string; permissionId: string }[] = [
   })),
 
   // ── Billing User: limited set ─────────────────────────────────
-  { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.DASHBOARD_VIEW },
   { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.BILLING_VIEW },
   { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.INVOICE_VIEW },
   { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.INVOICE_CREATE },
   { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.BARCODE_VIEW },
   { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.BARCODE_GENERATE },
-  { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.SETTINGS_VIEW },
-  { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.SETTINGS_UPDATE },
 ];
 
 export async function seedRolePermissions(
