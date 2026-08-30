@@ -76,6 +76,7 @@ async function main() {
 
   try {
     // 1. Fetch products where barcode is missing or empty
+    // @ts-ignore - Bypass IDE complaining about newly added schema fields
     const products = await prisma.product.findMany({
       where: {
         OR: [
