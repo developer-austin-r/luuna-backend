@@ -253,7 +253,9 @@ export class ProductController {
     if (!product.barcode) {
       throw new BadRequestException('Product does not have a barcode assigned');
     }
-    const buffer = await this.barcodeService.generateBarcodeImage(product.barcode);
+    const buffer = await this.barcodeService.generateBarcodeImage(
+      product.barcode,
+    );
     res.setHeader('Content-Type', 'image/png');
     res.send(buffer);
   }

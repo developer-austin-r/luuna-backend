@@ -447,7 +447,9 @@ export class ProductService {
         where: { barcode: finalBarcode },
       });
       if (existingBarcode) {
-        throw new ConflictException(`Product with Barcode "${finalBarcode}" already exists`);
+        throw new ConflictException(
+          `Product with Barcode "${finalBarcode}" already exists`,
+        );
       }
     }
 
@@ -752,7 +754,9 @@ export class ProductService {
         },
       });
       if (conflictBarcode) {
-        throw new ConflictException(`Product with Barcode "${barcode}" already exists`);
+        throw new ConflictException(
+          `Product with Barcode "${barcode}" already exists`,
+        );
       }
     }
 

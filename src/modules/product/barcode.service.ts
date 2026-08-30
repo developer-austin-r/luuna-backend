@@ -15,7 +15,9 @@ export class BarcodeService {
    */
   calculateEan13Checksum(digits12: string): number {
     if (digits12.length !== 12 || !/^\d+$/.test(digits12)) {
-      throw new BadRequestException('EAN-13 checksum calculation requires exactly 12 digits');
+      throw new BadRequestException(
+        'EAN-13 checksum calculation requires exactly 12 digits',
+      );
     }
 
     let sum = 0;
@@ -42,7 +44,7 @@ export class BarcodeService {
 
     while (attempts < maxAttempts) {
       attempts++;
-      
+
       // Generate 9 random digits
       let randomDigits = '';
       for (let i = 0; i < 9; i++) {
@@ -63,7 +65,9 @@ export class BarcodeService {
       }
     }
 
-    throw new BadRequestException('Failed to generate a unique barcode value after multiple attempts');
+    throw new BadRequestException(
+      'Failed to generate a unique barcode value after multiple attempts',
+    );
   }
 
   /**
@@ -94,7 +98,9 @@ export class BarcodeService {
         `Failed to generate barcode image for text "${barcodeText}" using format "${bcid}"`,
         err instanceof Error ? err.stack : String(err),
       );
-      throw new BadRequestException(`Failed to generate barcode image: ${err instanceof Error ? err.message : String(err)}`);
+      throw new BadRequestException(
+        `Failed to generate barcode image: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }
