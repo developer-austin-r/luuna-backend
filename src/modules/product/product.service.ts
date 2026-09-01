@@ -1587,4 +1587,41 @@ export class ProductService {
       orderBy: { status: 'asc' },
     });
   }
+
+  async getMonthlyStockReport() {
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
+    const products = await this.prisma.product.findMany({
+      where: { deletedAt: null },
+      include: {
+        orderItems: {
+          where: {
+            order: {
+              orderedAt: { gte: oneMonthAgo },
+            },
+          },
+        },
+      },
+    });
+
+    return products.map((product) => {
+      const soldQuantity = product.orderItems.reduce(
+        (sum, item) => sum + Number(item.quantity),
+        0,
+      );
+      const balanceStock = product.stock;
+      const initialStock = balanceStock + soldQuantity;
+
+      return {
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        barcode: product.barcode || 'N/A',
+        initialStock,
+        soldQuantity,
+        balanceStock,
+      };
+    });
+  }
 }
