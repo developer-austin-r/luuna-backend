@@ -92,7 +92,7 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       password: passwordHash,
-      isVerified: true,
+      isVerified: false,
       role: { connect: { id: '00000000-0000-0000-0000-000000000002' } }, // User role (client)
     });
 
