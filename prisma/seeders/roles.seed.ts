@@ -11,7 +11,7 @@ const ROLES = [
     id: '00000000-0000-0000-0000-000000000002',
     name: 'Billing User',
     slug: 'billing-user',
-    description: 'Billing user access',
+    description: 'Billing and invoice access',
   },
 ];
 
@@ -22,6 +22,6 @@ export async function seedRoles(prisma: PrismaClient): Promise<void> {
       update: { name: role.name, slug: role.slug, description: role.description },
       create: role,
     });
-    console.log(`Upserted Role: ${result.name}`);
+    console.log(`Upserted Role: ${result.name} (${result.slug})`);
   }
 }
