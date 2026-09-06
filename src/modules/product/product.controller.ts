@@ -232,6 +232,19 @@ export class ProductController {
     return this.productService.deleteCategory(id);
   }
 
+  @Get('monthly-stock')
+  @ApiOperation({
+    summary:
+      'Get monthly stock report (sales in last 30 days and current stock)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Monthly stock report fetched successfully.',
+  })
+  async getMonthlyStockReport() {
+    return this.productService.getMonthlyStockReport();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get product details by ID' })
   @ApiParam({ name: 'id', description: 'Product UUID' })
