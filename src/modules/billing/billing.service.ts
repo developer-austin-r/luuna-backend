@@ -68,6 +68,9 @@ export class BillingService {
       },
       include: {
         billItems: true,
+        billedByUser: {
+          select: { id: true, name: true, email: true },
+        },
       },
     });
   }
@@ -106,7 +109,12 @@ export class BillingService {
         skip,
         take: Number(limit),
         orderBy: { createdAt: 'desc' },
-        include: { billItems: true },
+        include: {
+          billItems: true,
+          billedByUser: {
+            select: { id: true, name: true, email: true },
+          },
+        },
       }),
     ]);
 
@@ -127,7 +135,12 @@ export class BillingService {
   async findOne(id: string) {
     const bill = await this.prisma.bill.findUnique({
       where: { id },
-      include: { billItems: true },
+      include: {
+        billItems: true,
+        billedByUser: {
+          select: { id: true, name: true, email: true },
+        },
+      },
     });
     if (!bill) {
       throw new NotFoundException(`Bill with ID "${id}" not found`);
@@ -143,7 +156,12 @@ export class BillingService {
     return this.prisma.bill.update({
       where: { id },
       data: { status: 'CANCELLED' },
-      include: { billItems: true },
+      include: {
+        billItems: true,
+        billedByUser: {
+          select: { id: true, name: true, email: true },
+        },
+      },
     });
   }
 }

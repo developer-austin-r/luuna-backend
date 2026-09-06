@@ -16,6 +16,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { BillingService } from './billing.service';
 import { CreateBillDto, BillQueryDto } from './dto';
 
@@ -28,7 +30,10 @@ export class BillingController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new bill (POS sale)' })
   @ApiCreatedResponse({ description: 'Bill created successfully.' })
-  async create(@Body() dto: CreateBillDto) {
+  async create(@Body() dto: CreateBillDto, @CurrentUser() user?: JwtPayload) {
+    if (user?.sub && !dto.billedBy) {
+      dto.billedBy = user.sub;
+    }
     return this.billingService.create(dto);
   }
 

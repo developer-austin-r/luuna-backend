@@ -13,6 +13,12 @@ const ROLES = [
     slug: 'billing-user',
     description: 'Billing and invoice access',
   },
+  {
+    id: '00000000-0000-0000-0000-000000000003',
+    name: 'User',
+    slug: 'user',
+    description: 'Standard customer user access',
+  },
 ];
 
 export async function seedRoles(prisma: PrismaClient): Promise<void> {
