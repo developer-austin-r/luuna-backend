@@ -7,7 +7,6 @@ const PERM = {
   PRODUCTS_VIEW: '10000000-0000-0000-0000-000000000006',
   ORDERS_VIEW: '10000000-0000-0000-0000-000000000010',
   BILLING_VIEW: '10000000-0000-0000-0000-000000000012',
-  INVOICE_VIEW: '10000000-0000-0000-0000-000000000013',
   BARCODE_VIEW: '10000000-0000-0000-0000-000000000017',
   REPORTS_VIEW: '10000000-0000-0000-0000-000000000019',
   SETTINGS_VIEW: '10000000-0000-0000-0000-000000000021',
@@ -25,7 +24,6 @@ const MENU_IDS = {
   PRODUCTS: '20000000-0000-0000-0000-000000000003',
   ORDERS: '20000000-0000-0000-0000-000000000004',
   BILLING: '20000000-0000-0000-0000-000000000005',
-  INVOICE_HISTORY: '20000000-0000-0000-0000-000000000006',
   REPORTS: '20000000-0000-0000-0000-000000000008',
   SETTINGS: '20000000-0000-0000-0000-000000000009',
   CUSTOMERS: '20000000-0000-0000-0000-000000000010',
@@ -43,7 +41,6 @@ const MENU_IDS = {
  * 3  Products          (admin only)        → products.view
  * 4  Orders            (admin only)        → orders.view
  * 5  Billing           (admin + billing)   → billing.view
- * 6    └── Invoice History (child)         → invoice.view
  * 7  Barcode           (admin + billing)   → barcode.view
  * 8  Reports           (admin only)        → reports.view
  * 9  Settings          (admin + billing)   → settings.view
@@ -159,17 +156,7 @@ const TOP_LEVEL_MENUS = [
   },
 ];
 
-const CHILD_MENUS = [
-  {
-    id: MENU_IDS.INVOICE_HISTORY,
-    name: 'Invoice History',
-    slug: 'invoice-history',
-    icon: 'FileText',
-    permissionId: PERM.INVOICE_VIEW,
-    parentId: MENU_IDS.BILLING,
-    sortOrder: 1,
-  },
-];
+const CHILD_MENUS = [];
 
 export async function seedMenus(prisma: PrismaClient): Promise<void> {
   // Insert top-level menus first (no parent dependency)

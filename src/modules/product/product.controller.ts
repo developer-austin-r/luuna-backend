@@ -95,6 +95,31 @@ export class ProductController {
     return this.productService.getCategories();
   }
 
+  @Get('lookup')
+  @ApiOperation({
+    summary: 'Look up product by barcode or SKU (for POS billing scanner)',
+  })
+  @ApiQuery({
+    name: 'code',
+    required: true,
+    type: String,
+    description: 'Barcode value or SKU of the product',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Product found.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Product not found.',
+  })
+  async lookupProduct(@Query('code') code: string) {
+    if (!code || !code.trim()) {
+      throw new BadRequestException('Query param "code" is required');
+    }
+    return this.productService.findByBarcodeOrSku(code.trim());
+  }
+
   @Get('statuses/all')
   @ApiOperation({
     summary: 'Get all active statuses for product assignments',
