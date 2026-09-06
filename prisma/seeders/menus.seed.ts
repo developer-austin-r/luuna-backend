@@ -156,7 +156,7 @@ const TOP_LEVEL_MENUS = [
   },
 ];
 
-const CHILD_MENUS = [];
+const CHILD_MENUS: (typeof TOP_LEVEL_MENUS)[number][] = [];
 
 export async function seedMenus(prisma: PrismaClient): Promise<void> {
   // Insert top-level menus first (no parent dependency)
