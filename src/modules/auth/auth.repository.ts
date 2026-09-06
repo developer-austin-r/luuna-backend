@@ -11,8 +11,9 @@ export class AuthRepository {
   }
 
   async findUserByEmail(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email },
+    console.log(`[DEBUG] Checking if email exists (incoming): ${email}`);
+    const user = await this.prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
       select: {
         id: true,
         email: true,
@@ -29,6 +30,8 @@ export class AuthRepository {
         },
       },
     });
+    console.log(`[DEBUG] Query result for ${email}:`, user ? `Found (ID: ${user.id})` : 'Not found');
+    return user;
   }
 
   async findUserById(id: string) {
