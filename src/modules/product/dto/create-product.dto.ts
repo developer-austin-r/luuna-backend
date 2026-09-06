@@ -52,6 +52,11 @@ export class CreateProductDto {
   @IsString()
   sku: string;
 
+  @ApiPropertyOptional({ example: '2001234567897' })
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
   @ApiProperty({ example: 'Wireless Noise Canceling Headphones' })
   @IsString()
   name: string;

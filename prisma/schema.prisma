@@ -7,12 +7,16 @@ generator client {
 }
 
 model Role {
-  id          String   @id @default(uuid()) @map("id")
-  name        String   @unique @map("name")
-  description String?  @map("description")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  users       User[]
+  id          String    @id @default(uuid()) @map("id")
+  name        String    @unique @map("name")
+  slug        String    @unique @map("slug")
+  description String?   @map("description")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  users           User[]
+  rolePermissions RolePermission[]
 
   @@map("roles")
 }
@@ -33,6 +37,7 @@ model User {
   tokens         Token[]
   orders         Order[]
   activityLogs   ActivityLog[]
+  bills          Bill[]
 
   @@index([roleId])
   @@map("users")
@@ -81,6 +86,7 @@ model Status {
 model Product {
   id                String            @id @default(uuid()) @map("id")
   sku               String            @unique @map("sku")
+  barcode           String?           @unique @map("barcode")
   name              String            @map("name")
   slug              String            @unique @map("slug")
   shortDescription  String?           @map("short_description")
@@ -297,6 +303,64 @@ model Order {
   @@map("orders")
 }
 
+// ──────────────────────────────────────────────────────────────
+// RBAC
+// ──────────────────────────────────────────────────────────────
+
+model Permission {
+  id          String    @id @default(uuid()) @map("id")
+  name        String    @map("name")
+  slug        String    @unique @map("slug")
+  description String?   @map("description")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  rolePermissions RolePermission[]
+  menus           Menu[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @map("id")
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model Menu {
+  id           String  @id @default(uuid()) @map("id")
+  name         String  @map("name")
+  slug         String  @unique @map("slug")
+  icon         String? @map("icon")
+  permissionId String? @map("permission_id")
+  parentId     String? @map("parent_id")
+  sortOrder    Int     @default(0) @map("sort_order")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  permission Permission? @relation(fields: [permissionId], references: [id])
+  parent     Menu?       @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children   Menu[]      @relation("MenuHierarchy")
+
+  @@index([permissionId])
+  @@index([parentId])
+  @@map("menus")
+}
+
 model OrderItem {
   id        String  @id @default(uuid()) @map("id")
   orderId   String  @map("order_id")
@@ -394,3 +458,67 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
+// ──────────────────────────────────────────────────────────────
+// POS BILLING
+// ──────────────────────────────────────────────────────────────
+
+enum BillPaymentMethod {
+  CASH
+  CARD
+  UPI
+  NET_BANKING
+  OTHER
+}
+
+enum BillStatus {
+  DRAFT
+  PAID
+  CANCELLED
+}
+
+model Bill {
+  id              String            @id @default(uuid()) @map("id")
+  billNumber      String            @unique @map("bill_number")
+  billedBy        String?           @map("billed_by")
+  customerName    String?           @map("customer_name")
+  customerMobile  String?           @map("customer_mobile")
+  customerEmail   String?           @map("customer_email")
+  customerAddress String?           @db.Text @map("customer_address")
+  subtotal        Decimal           @db.Decimal(10, 2) @map("subtotal")
+  discount        Decimal           @default(0.00) @db.Decimal(10, 2) @map("discount")
+  tax             Decimal           @default(0.00) @db.Decimal(10, 2) @map("tax")
+  totalAmount     Decimal           @db.Decimal(10, 2) @map("total_amount")
+  paymentMethod   BillPaymentMethod @default(CASH) @map("payment_method")
+  status          BillStatus        @default(PAID) @map("status")
+  notes           String?           @db.Text @map("notes")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  billItems       BillItem[]
+  billedByUser     User?             @relation(fields: [billedBy], references: [id], onDelete: SetNull)
+
+  @@index([billNumber])
+  @@index([billedBy])
+  @@index([createdAt])
+  @@index([status])
+  @@map("bills")
+}
+
+model BillItem {
+  id         String  @id @default(uuid()) @map("id")
+  billId     String  @map("bill_id")
+  productId  String? @map("product_id")
+  productName String @map("product_name")
+  sku        String? @map("sku")
+  barcode    String? @map("barcode")
+  quantity   Int     @map("quantity")
+  unitPrice  Decimal @db.Decimal(10, 2) @map("unit_price")
+  discount   Decimal @default(0.00) @db.Decimal(10, 2) @map("discount")
+  tax        Decimal @default(0.00) @db.Decimal(10, 2) @map("tax")
+  total      Decimal @db.Decimal(10, 2) @map("total")
+
+  bill       Bill    @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([billId])
+  @@map("bill_items")
+}

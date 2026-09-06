@@ -11,6 +11,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenModule } from '../token/token.module';
 import { EmailModule } from '../email/email.module';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
+import { RbacModule } from '../rbac/rbac.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     TokenModule,
     EmailModule,
     ActivityLogModule,
+    RbacModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
