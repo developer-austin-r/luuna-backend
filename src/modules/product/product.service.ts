@@ -339,6 +339,35 @@ export class ProductService {
   }
 
   /**
+   * Lookup product by barcode or SKU (for POS billing scanner).
+   */
+  async findByBarcodeOrSku(code: string) {
+    const product = await this.prisma.product.findFirst({
+      where: {
+        deletedAt: null,
+        OR: [{ barcode: code }, { sku: { equals: code, mode: 'insensitive' } }],
+      },
+      include: {
+        brand: true,
+        status: true,
+        productCategories: {
+          include: { category: true },
+        },
+        images: { orderBy: { displayOrder: 'asc' } },
+        inventories: true,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException(
+        `Product with barcode or SKU "${code}" not found`,
+      );
+    }
+
+    return this.serializeBigInt(this.resolveProductMedia(product));
+  }
+
+  /**
    * Get single product by ID with full relations.
    */
   async findOne(id: string) {

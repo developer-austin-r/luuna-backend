@@ -457,3 +457,65 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
+// ──────────────────────────────────────────────────────────────
+// POS BILLING
+// ──────────────────────────────────────────────────────────────
+
+enum BillPaymentMethod {
+  CASH
+  CARD
+  UPI
+  NET_BANKING
+  OTHER
+}
+
+enum BillStatus {
+  DRAFT
+  PAID
+  CANCELLED
+}
+
+model Bill {
+  id              String            @id @default(uuid()) @map("id")
+  billNumber      String            @unique @map("bill_number")
+  billedBy        String?           @map("billed_by")
+  customerName    String?           @map("customer_name")
+  customerMobile  String?           @map("customer_mobile")
+  customerEmail   String?           @map("customer_email")
+  customerAddress String?           @db.Text @map("customer_address")
+  subtotal        Decimal           @db.Decimal(10, 2) @map("subtotal")
+  discount        Decimal           @default(0.00) @db.Decimal(10, 2) @map("discount")
+  tax             Decimal           @default(0.00) @db.Decimal(10, 2) @map("tax")
+  totalAmount     Decimal           @db.Decimal(10, 2) @map("total_amount")
+  paymentMethod   BillPaymentMethod @default(CASH) @map("payment_method")
+  status          BillStatus        @default(PAID) @map("status")
+  notes           String?           @db.Text @map("notes")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  billItems       BillItem[]
+
+  @@index([billNumber])
+  @@index([createdAt])
+  @@index([status])
+  @@map("bills")
+}
+
+model BillItem {
+  id         String  @id @default(uuid()) @map("id")
+  billId     String  @map("bill_id")
+  productId  String? @map("product_id")
+  productName String @map("product_name")
+  sku        String? @map("sku")
+  barcode    String? @map("barcode")
+  quantity   Int     @map("quantity")
+  unitPrice  Decimal @db.Decimal(10, 2) @map("unit_price")
+  discount   Decimal @default(0.00) @db.Decimal(10, 2) @map("discount")
+  tax        Decimal @default(0.00) @db.Decimal(10, 2) @map("tax")
+  total      Decimal @db.Decimal(10, 2) @map("total")
+
+  bill       Bill    @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([billId])
+  @@map("bill_items")
+}
