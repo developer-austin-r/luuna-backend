@@ -56,7 +56,10 @@ CREATE INDEX "bills_created_at_idx" ON "bills"("created_at");
 CREATE INDEX "bills_status_idx" ON "bills"("status");
 
 -- CreateIndex
-CREATE INDEX "bill_items_bill_id_idx" ON "bill_items"("bill_id");
+CREATE INDEX "bills_billed_by_idx" ON "bills"("billed_by");
 
 -- AddForeignKey
 ALTER TABLE "bill_items" ADD CONSTRAINT "bill_items_bill_id_fkey" FOREIGN KEY ("bill_id") REFERENCES "bills"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bills" ADD CONSTRAINT "bills_billed_by_fkey" FOREIGN KEY ("billed_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

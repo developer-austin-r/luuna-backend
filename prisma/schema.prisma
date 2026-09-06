@@ -37,6 +37,7 @@ model User {
   tokens         Token[]
   orders         Order[]
   activityLogs   ActivityLog[]
+  bills          Bill[]
 
   @@index([roleId])
   @@map("users")
@@ -494,8 +495,10 @@ model Bill {
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
   billItems       BillItem[]
+  billedByUser     User?             @relation(fields: [billedBy], references: [id], onDelete: SetNull)
 
   @@index([billNumber])
+  @@index([billedBy])
   @@index([createdAt])
   @@index([status])
   @@map("bills")

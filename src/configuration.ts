@@ -43,10 +43,51 @@ export default () => ({
       process.env.AUTH_VERIFICATION_EXPIRES_MINUTES ?? 1440,
     ),
     resetExpiresInMinutes: Number(process.env.AUTH_RESET_EXPIRES_MINUTES ?? 60),
+    frontendUrl: (() => {
+      if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, '');
+      if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
+      if (
+        process.env.CORS_ORIGIN &&
+        process.env.CORS_ORIGIN !== 'true' &&
+        process.env.CORS_ORIGIN !== '*'
+      ) {
+        const origin = process.env.CORS_ORIGIN.split(',')[0].trim();
+        if (origin.startsWith('http://') || origin.startsWith('https://')) {
+          return origin.replace(/\/$/, '');
+        }
+      }
+      return 'http://localhost:3000';
+    })(),
     frontendVerificationUrl:
-      process.env.FRONTEND_VERIFICATION_URL || 'http://localhost:3000/verify',
+      process.env.FRONTEND_VERIFICATION_URL ||
+      ((() => {
+        const base =
+          process.env.FRONTEND_URL ||
+          process.env.APP_URL ||
+          (process.env.CORS_ORIGIN &&
+          process.env.CORS_ORIGIN !== 'true' &&
+          process.env.CORS_ORIGIN !== '*' &&
+          (process.env.CORS_ORIGIN.split(',')[0].trim().startsWith('http://') ||
+            process.env.CORS_ORIGIN.split(',')[0].trim().startsWith('https://'))
+            ? process.env.CORS_ORIGIN.split(',')[0].trim()
+            : 'http://localhost:3000');
+        return `${base.replace(/\/$/, '')}/verify`;
+      })()),
     frontendResetUrl:
-      process.env.FRONTEND_RESET_URL || 'http://localhost:3000/reset-password',
+      process.env.FRONTEND_RESET_URL ||
+      ((() => {
+        const base =
+          process.env.FRONTEND_URL ||
+          process.env.APP_URL ||
+          (process.env.CORS_ORIGIN &&
+          process.env.CORS_ORIGIN !== 'true' &&
+          process.env.CORS_ORIGIN !== '*' &&
+          (process.env.CORS_ORIGIN.split(',')[0].trim().startsWith('http://') ||
+            process.env.CORS_ORIGIN.split(',')[0].trim().startsWith('https://'))
+            ? process.env.CORS_ORIGIN.split(',')[0].trim()
+            : 'http://localhost:3000');
+        return `${base.replace(/\/$/, '')}/reset-password`;
+      })()),
     bcryptRounds: Number(process.env.BCRYPT_ROUNDS ?? 10),
   },
   rateLimit: {
