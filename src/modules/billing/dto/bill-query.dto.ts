@@ -15,7 +15,9 @@ export class BillQueryDto {
   @Min(1)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: 'Search by bill number or customer name' })
+  @ApiPropertyOptional({
+    description: 'Search by bill number or customer name',
+  })
   @IsOptional()
   @IsString()
   search?: string;

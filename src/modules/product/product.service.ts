@@ -345,10 +345,7 @@ export class ProductService {
     const product = await this.prisma.product.findFirst({
       where: {
         deletedAt: null,
-        OR: [
-          { barcode: code },
-          { sku: { equals: code, mode: 'insensitive' } },
-        ],
+        OR: [{ barcode: code }, { sku: { equals: code, mode: 'insensitive' } }],
       },
       include: {
         brand: true,
