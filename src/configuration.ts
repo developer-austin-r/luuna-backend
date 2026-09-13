@@ -48,6 +48,14 @@ export default () => ({
     frontendResetUrl:
       process.env.FRONTEND_RESET_URL || 'http://localhost:3000/reset-password',
     bcryptRounds: Number(process.env.BCRYPT_ROUNDS ?? 10),
+    auth0Domain: process.env.AUTH0_DOMAIN,
+    auth0ClientId: process.env.AUTH0_CLIENT_ID,
+    auth0ClientSecret: process.env.AUTH0_CLIENT_SECRET,
+    auth0CallbackUrl:
+      process.env.AUTH0_CALLBACK_URL ||
+      'http://localhost:3001/auth/oauth/callback',
+    frontendDashboardUrl:
+      process.env.FRONTEND_DASHBOARD_URL || 'http://localhost:3000/dashboard',
   },
   rateLimit: {
     signupAttempts: Number(process.env.AUTH_MAX_SIGNUP_ATTEMPTS ?? 5),

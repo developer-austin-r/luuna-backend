@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import { AuthRepository } from './auth.repository';
 import { LoginDto } from './dto/login.dto';
@@ -301,6 +302,102 @@ export class AuthService {
       menus,
     };
   }
+
+  /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+  async oauthLogin(
+    profile: any,
+    res: Response,
+    ipAddress?: string,
+    userAgent?: string,
+    sessionId?: string,
+  ): Promise<void> {
+    let email =
+      profile.emails && profile.emails.length > 0
+        ? profile.emails[0].value
+        : null;
+    if (!email && profile._json && profile._json.email) {
+      email = profile._json.email;
+    }
+
+    if (!email) {
+      throw new UnauthorizedException(
+        'OAuth provider did not return an email address',
+      );
+    }
+
+    let user = await this.authRepository.findUserByEmail(email);
+
+    if (!user) {
+      const bcryptRounds = this.configService.get<number>(
+        'auth.bcryptRounds',
+        10,
+      );
+      const randomPassword = randomBytes(32).toString('hex');
+      const passwordHash = await hash(randomPassword, bcryptRounds);
+
+      await this.authRepository.createUser({
+        name:
+          profile.displayName || profile.name?.givenName || email.split('@')[0],
+        email: email,
+        password: passwordHash,
+        isVerified: true,
+        role: { connect: { id: '00000000-0000-0000-0000-000000000002' } }, // User role (client)
+      });
+      user = await this.authRepository.findUserByEmail(email);
+
+      if (user) {
+        await this.activityLogService.log({
+          userId: user.id,
+          sessionId,
+          moduleName: 'authentication',
+          actionName: 'oauth_signup',
+          ipAddress,
+          userAgent,
+          description: `User signed up via OAuth`,
+          metadata: { email: user.email, provider: profile.provider },
+        });
+      }
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Failed to create or find user');
+    }
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new UnauthorizedException('Account is locked.');
+    }
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role?.name ?? null,
+    };
+
+    const accessToken = this.generateAccessToken(payload);
+    const refreshTokenPayload = { ...payload, type: 'refresh' };
+    const refreshToken = this.generateRefreshToken(refreshTokenPayload);
+
+    await this.tokenService.generateToken(
+      user.id,
+      TokenType.REFRESH_TOKEN,
+      this.parseDurationToMinutes(this.refreshExpiresIn),
+      ipAddress,
+      userAgent,
+    );
+
+    this.setAuthCookies(res, accessToken, refreshToken, true);
+
+    await this.activityLogService.log({
+      userId: user.id,
+      sessionId,
+      moduleName: 'authentication',
+      actionName: 'oauth_login',
+      ipAddress,
+      userAgent,
+      description: `User logged in via OAuth`,
+      metadata: { email: user.email, provider: profile.provider },
+    });
+  }
+  /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 
   async forgotPassword(
     dto: ForgotPasswordDto,
