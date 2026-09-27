@@ -30,7 +30,10 @@ export class AuthRepository {
         },
       },
     });
-    console.log(`[DEBUG] Query result for ${email}:`, user ? `Found (ID: ${user.id})` : 'Not found');
+    console.log(
+      `[DEBUG] Query result for ${email}:`,
+      user ? `Found (ID: ${user.id})` : 'Not found',
+    );
     return user;
   }
 
