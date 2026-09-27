@@ -79,6 +79,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 10m
+          command_timeout: 15m
           script_stop: true
           script: |
             set -e
@@ -107,7 +109,7 @@ jobs:
               --password-stdin
 
             echo "Pulling latest image..."
-            sudo docker compose --env-file "$ENV_FILE" pull
+            sudo docker compose --env-file "$ENV_FILE" pull --quiet
 
             echo "Starting PostgreSQL..."
             sudo docker compose --env-file "$ENV_FILE" up -d db
