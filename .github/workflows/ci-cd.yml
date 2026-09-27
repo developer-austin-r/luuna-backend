@@ -61,6 +61,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/ubuntu/luuna-backend"
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.1.0
         with:
@@ -83,11 +95,6 @@ jobs:
 
             if [ ! -f "$ENV_FILE" ]; then
               echo "Missing $ENV_FILE. Create it on the server before deploying."
-              exit 1
-            fi
-
-            if [ ! -f "$COMPOSE_FILE" ]; then
-              echo "Missing $COMPOSE_FILE. Create it on the server before deploying."
               exit 1
             fi
 
