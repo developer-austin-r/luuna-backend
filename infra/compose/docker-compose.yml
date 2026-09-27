@@ -37,6 +37,7 @@ services:
 
 volumes:
   postgres_data:
+    name: luuna-backend_postgres_data
     driver: local
 
 networks:
