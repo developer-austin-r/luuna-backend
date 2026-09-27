@@ -102,6 +102,7 @@ export class AuthService {
       email: dto.email,
       password: passwordHash,
       isVerified: false,
+      role: { connect: { id: '00000000-0000-0000-0000-000000000003' } }, // Standard User role
     });
 
     const verifyExpiry = this.configService.get<number>(
@@ -115,7 +116,6 @@ export class AuthService {
       ipAddress,
       userAgent,
     );
-
     await this.emailService.sendVerificationEmail(
       user.email,
       user.name || 'User',
