@@ -53,6 +53,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: infra/docker/Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository }}:latest
 
@@ -70,7 +71,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml"
+          source: "infra/compose/docker-compose.yml"
           target: "/home/ubuntu/luuna-backend"
 
       - name: Deploy to EC2
@@ -93,7 +94,7 @@ jobs:
             # The production environment file is managed directly on the EC2
             # host. Never create, copy, or overwrite it from GitHub Actions.
             ENV_FILE="$DEPLOY_DIR/.env"
-            COMPOSE_FILE="$DEPLOY_DIR/docker-compose.yml"
+            COMPOSE_FILE="$DEPLOY_DIR/infra/compose/docker-compose.yml"
 
             if [ ! -f "$ENV_FILE" ]; then
               echo "Missing $ENV_FILE. Create it on the server before deploying."
@@ -109,27 +110,27 @@ jobs:
               --password-stdin
 
             echo "Pulling latest image..."
-            sudo docker compose --env-file "$ENV_FILE" pull --quiet
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull --quiet
 
             echo "Starting PostgreSQL..."
-            sudo docker compose --env-file "$ENV_FILE" up -d db
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d db
 
             # Apply committed Prisma migrations using the newly pulled image.
             # This happens before the backend is recreated, so a failed
             # migration leaves the currently running backend available.
             echo "Applying database migrations..."
-            sudo docker compose --env-file "$ENV_FILE" run --rm --no-deps backend \
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm --no-deps backend \
               npx prisma migrate deploy
 
             # Seed the default reference data after migrations. Each seeder uses
             # Prisma upsert with stable IDs, so this is safe on every deployment
             # and never creates duplicate statuses, brands, or categories.
             echo "Seeding default reference data..."
-            sudo docker compose --env-file "$ENV_FILE" run --rm --no-deps backend \
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm --no-deps backend \
               npm run prisma:seed
 
             echo "Starting updated backend..."
-            sudo docker compose --env-file "$ENV_FILE" up -d --no-deps backend
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --no-deps backend
 
             echo "Removing unused images..."
             sudo docker image prune -f
