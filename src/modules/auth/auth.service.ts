@@ -116,8 +116,6 @@ export class AuthService {
       ipAddress,
       userAgent,
     );
-
-    await this.emailService.sendWelcomeEmail(user.email, user.name || 'User');
     await this.emailService.sendVerificationEmail(
       user.email,
       user.name || 'User',
@@ -167,6 +165,11 @@ export class AuthService {
       userAgent,
       description: `User signup completed (email verified)`,
     });
+
+    const user = await this.authRepository.findUserById(matchedToken.userId);
+    if (user) {
+      await this.emailService.sendWelcomeEmail(user.email, user.name || 'User');
+    }
 
     return 'Your email has been verified successfully.';
   }
