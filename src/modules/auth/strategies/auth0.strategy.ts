@@ -17,10 +17,17 @@ class NullStateStore {
 export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
   constructor(private configService: ConfigService) {
     super({
-      domain: configService.get<string>('auth.auth0Domain'),
-      clientID: configService.get<string>('auth.auth0ClientId'),
-      clientSecret: configService.get<string>('auth.auth0ClientSecret'),
-      callbackURL: configService.get<string>('auth.auth0CallbackUrl'),
+      domain:
+        configService.get<string>('auth.auth0Domain') ||
+        'dev-j47epbqdg6jko7v1.us.auth0.com',
+      clientID:
+        configService.get<string>('auth.auth0ClientId') || 'dummy-client-id',
+      clientSecret:
+        configService.get<string>('auth.auth0ClientSecret') ||
+        'dummy-client-secret',
+      callbackURL:
+        configService.get<string>('auth.auth0CallbackUrl') ||
+        'http://localhost:3000/auth/oauth/callback',
       scope: 'openid profile email',
       state: true,
       store: new NullStateStore(),
