@@ -29,10 +29,10 @@ import { validationSchema } from './common/constants';
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => [
+      useFactory: () => [
         {
-          ttl: config.get<number>('rateLimit.loginWindowMinutes', 15) * 60,
-          limit: config.get<number>('rateLimit.loginAttempts', 5),
+          ttl: 60, // 1 minute
+          limit: 100, // 100 requests per minute globally
         },
       ],
     }),

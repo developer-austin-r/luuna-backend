@@ -33,12 +33,12 @@ export class ProductQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ example: 10, default: 10 })
+  @ApiPropertyOptional({ example: 25, default: 25 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit?: number = 10;
+  limit?: number = 25;
 
   @ApiPropertyOptional({ example: 'headphones' })
   @IsOptional()
