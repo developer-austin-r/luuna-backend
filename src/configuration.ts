@@ -44,7 +44,8 @@ export default () => ({
     ),
     resetExpiresInMinutes: Number(process.env.AUTH_RESET_EXPIRES_MINUTES ?? 60),
     frontendUrl: (() => {
-      if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, '');
+      if (process.env.FRONTEND_URL)
+        return process.env.FRONTEND_URL.replace(/\/$/, '');
       if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
       if (
         process.env.CORS_ORIGIN &&
@@ -60,7 +61,7 @@ export default () => ({
     })(),
     frontendVerificationUrl:
       process.env.FRONTEND_VERIFICATION_URL ||
-      ((() => {
+      (() => {
         const base =
           process.env.FRONTEND_URL ||
           process.env.APP_URL ||
@@ -72,10 +73,10 @@ export default () => ({
             ? process.env.CORS_ORIGIN.split(',')[0].trim()
             : 'http://localhost:3000');
         return `${base.replace(/\/$/, '')}/verify`;
-      })()),
+      })(),
     frontendResetUrl:
       process.env.FRONTEND_RESET_URL ||
-      ((() => {
+      (() => {
         const base =
           process.env.FRONTEND_URL ||
           process.env.APP_URL ||
@@ -87,9 +88,10 @@ export default () => ({
             ? process.env.CORS_ORIGIN.split(',')[0].trim()
             : 'http://localhost:3000');
         return `${base.replace(/\/$/, '')}/reset-password`;
-      })()),
+      })(),
     bcryptRounds: Number(process.env.BCRYPT_ROUNDS ?? 10),
-    auth0Domain: process.env.AUTH0_DOMAIN || 'dev-j47epbqdg6jko7v1.us.auth0.com',
+    auth0Domain:
+      process.env.AUTH0_DOMAIN || 'dev-j47epbqdg6jko7v1.us.auth0.com',
     auth0ClientId: process.env.AUTH0_CLIENT_ID || 'dummy-client-id',
     auth0ClientSecret: process.env.AUTH0_CLIENT_SECRET || 'dummy-client-secret',
     auth0CallbackUrl:
