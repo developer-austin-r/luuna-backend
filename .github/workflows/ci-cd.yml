@@ -159,6 +159,19 @@ jobs:
             echo "Removing unused images..."
             sudo docker image prune -f
 
+            # Restart the frontend after the backend is healthy and the shared
+            # network is confirmed to exist. This keeps both services in sync
+            # without needing a separate frontend deployment trigger.
+            FRONTEND_COMPOSE="/home/ubuntu/luuna-frontend/infra/compose/docker-compose.yml"
+            FRONTEND_ENV="/home/ubuntu/luuna-frontend/.env"
+            if [ -f "$FRONTEND_COMPOSE" ] && [ -f "$FRONTEND_ENV" ]; then
+              echo "Restarting frontend container..."
+              sudo docker compose -f "$FRONTEND_COMPOSE" --env-file "$FRONTEND_ENV" \
+                up -d --force-recreate --remove-orphans
+            else
+              echo "Frontend compose or env file not found — skipping frontend restart."
+            fi
+
             echo "Running containers:"
             sudo docker ps
 
