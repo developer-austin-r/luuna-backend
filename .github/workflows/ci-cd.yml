@@ -1,18 +1,13 @@
-name: CI/CD Pipeline
+name: Backend CI/CD Pipeline
 
 on:
   push:
     branches:
       - dev
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
@@ -22,23 +17,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        # The Docker driver uses the runner's built-in BuildKit instead of
-        # booting a separate BuildKit container from Docker Hub.
         uses: docker/setup-buildx-action@v4
         with:
           driver: docker
 
       - name: Pull Node base image with retry
-        # Docker Hub timeouts are transient on hosted runners. Pre-pulling with
-        # retries makes the later image build use the local cached base image.
         run: |
           for attempt in 1 2 3; do
-            if docker pull node:24-bookworm-slim; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              exit 1
-            fi
+            if docker pull node:24-bookworm-slim; then exit 0; fi
+            [ "$attempt" -eq 3 ] && exit 1
             sleep $((attempt * 10))
           done
 
@@ -86,93 +73,60 @@ jobs:
           script: |
             set -e
 
-            DEPLOY_DIR="/home/ubuntu/luuna-backend"
-
-            mkdir -p "$DEPLOY_DIR"
-            cd "$DEPLOY_DIR"
-
-            # The production environment file is managed directly on the EC2
-            # host. Never create, copy, or overwrite it from GitHub Actions.
-            ENV_FILE="$DEPLOY_DIR/.env"
-            COMPOSE_FILE="$DEPLOY_DIR/infra/compose/docker-compose.yml"
+            COMPOSE_FILE="/home/ubuntu/luuna-backend/infra/compose/docker-compose.yml"
+            ENV_FILE="/home/ubuntu/luuna-backend/.env"
 
             if [ ! -f "$ENV_FILE" ]; then
-              echo "Missing $ENV_FILE. Create it on the server before deploying."
+              echo "ERROR: $ENV_FILE not found. Create it on the server first."
               exit 1
             fi
 
-            # Keep credentials readable only by the deployment user.
-            chmod 600 "$ENV_FILE"
-
-            echo "Logging into GHCR..."
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io \
-              -u "${{ github.actor }}" \
-              --password-stdin
+              -u "${{ github.actor }}" --password-stdin
 
-            # Pull the new image FIRST before tearing down the running container.
-            # If the pull fails the old container keeps serving traffic.
-            echo "Pulling latest image..."
+            echo "Pulling latest backend image..."
             sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull --quiet
 
-            # Ensure the shared overlay network exists before starting any service.
-            # The backend compose owns this network; the frontend joins it as external.
-            echo "Ensuring luuna-network exists..."
+            # Backend owns luuna-network — create it if it does not exist yet.
             sudo docker network inspect luuna-network >/dev/null 2>&1 \
               || sudo docker network create luuna-network
 
-            # Start DB first and wait until it passes its healthcheck.
             echo "Starting PostgreSQL..."
             sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d db
 
             echo "Waiting for PostgreSQL to be healthy..."
             for i in $(seq 1 30); do
               STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' luuna-backend-db 2>/dev/null || echo "missing")
-              if [ "$STATUS" = "healthy" ]; then
-                echo "PostgreSQL is healthy."
-                break
-              fi
-              if [ "$i" -eq 30 ]; then
-                echo "PostgreSQL did not become healthy in time."
-                exit 1
-              fi
-              echo "Waiting... ($i/30)"
-              sleep 5
+              [ "$STATUS" = "healthy" ] && echo "PostgreSQL is healthy." && break
+              [ "$i" -eq 30 ] && echo "ERROR: PostgreSQL did not become healthy in time." && exit 1
+              echo "  attempt $i/30..."; sleep 5
             done
 
-            # Apply committed Prisma migrations using the newly pulled image.
-            # This happens before the backend is recreated, so a failed
-            # migration leaves the currently running backend available.
-            echo "Applying database migrations..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm --no-deps backend \
-              npx prisma migrate deploy
+            echo "Running database migrations..."
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
+              run --rm --no-deps backend npx prisma migrate deploy
 
-            # Seed the default reference data after migrations. Each seeder uses
-            # Prisma upsert with stable IDs, so this is safe on every deployment
-            # and never creates duplicate statuses, brands, or categories.
-            echo "Seeding default reference data..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm --no-deps backend \
-              npm run prisma:seed
+            echo "Seeding reference data..."
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
+              run --rm --no-deps backend npm run prisma:seed
 
-            echo "Starting updated backend..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --no-deps --force-recreate --remove-orphans backend
+            echo "Recreating backend container..."
+            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
+              up -d --no-deps --force-recreate backend
 
-            echo "Removing unused images..."
-            sudo docker image prune -f
-
-            # Restart the frontend after the backend is healthy and the shared
-            # network is confirmed to exist. This keeps both services in sync
-            # without needing a separate frontend deployment trigger.
+            # Both services share the same server and network.
+            # Always restart the frontend after a backend deployment
+            # so both containers stay in sync.
             FRONTEND_COMPOSE="/home/ubuntu/luuna-frontend/infra/compose/docker-compose.yml"
             FRONTEND_ENV="/home/ubuntu/luuna-frontend/.env"
             if [ -f "$FRONTEND_COMPOSE" ] && [ -f "$FRONTEND_ENV" ]; then
-              echo "Restarting frontend container..."
+              echo "Restarting frontend..."
               sudo docker compose -f "$FRONTEND_COMPOSE" --env-file "$FRONTEND_ENV" \
-                up -d --force-recreate --remove-orphans
-            else
-              echo "Frontend compose or env file not found — skipping frontend restart."
+                up -d --force-recreate
             fi
 
-            echo "Running containers:"
-            sudo docker ps
+            sudo docker image prune -f
 
-            echo "Deployment completed successfully."
+            echo "=== Running containers ==="
+            sudo docker ps
+            echo "Backend deployment complete."
