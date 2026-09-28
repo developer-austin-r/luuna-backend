@@ -124,6 +124,7 @@ jobs:
             FRONTEND_ENV="$FRONTEND_PROJECT/.env"
             if [ -f "$FRONTEND_COMPOSE" ] && [ -f "$FRONTEND_ENV" ]; then
               echo "Restarting frontend..."
+              sudo docker rm -f luuna-frontend 2>/dev/null || true
               sudo docker compose \
                 -f "$FRONTEND_COMPOSE" \
                 --project-directory "$FRONTEND_PROJECT" \
