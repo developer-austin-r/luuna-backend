@@ -73,8 +73,13 @@ jobs:
           script: |
             set -e
 
-            COMPOSE_FILE="/home/ubuntu/luuna-backend/infra/compose/docker-compose.yml"
-            ENV_FILE="/home/ubuntu/luuna-backend/.env"
+            PROJECT_DIR="/home/ubuntu/luuna-backend"
+            COMPOSE_FILE="$PROJECT_DIR/infra/compose/docker-compose.yml"
+            ENV_FILE="$PROJECT_DIR/.env"
+
+            # --project-directory tells Docker Compose that .env in the compose
+            # file resolves to $PROJECT_DIR/.env (not relative to the compose file).
+            DC="sudo docker compose -f $COMPOSE_FILE --project-directory $PROJECT_DIR --env-file $ENV_FILE"
 
             if [ ! -f "$ENV_FILE" ]; then
               echo "ERROR: $ENV_FILE not found. Create it on the server first."
@@ -85,14 +90,14 @@ jobs:
               -u "${{ github.actor }}" --password-stdin
 
             echo "Pulling latest backend image..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull --quiet
+            $DC pull --quiet
 
             # Backend owns luuna-network — create it if it does not exist yet.
             sudo docker network inspect luuna-network >/dev/null 2>&1 \
               || sudo docker network create luuna-network
 
             echo "Starting PostgreSQL..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d db
+            $DC up -d db
 
             echo "Waiting for PostgreSQL to be healthy..."
             for i in $(seq 1 30); do
@@ -103,25 +108,26 @@ jobs:
             done
 
             echo "Running database migrations..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
-              run --rm --no-deps backend npx prisma migrate deploy
+            $DC run --rm --no-deps backend npx prisma migrate deploy
 
             echo "Seeding reference data..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
-              run --rm --no-deps backend npm run prisma:seed
+            $DC run --rm --no-deps backend npm run prisma:seed
 
             echo "Recreating backend container..."
-            sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
-              up -d --no-deps --force-recreate backend
+            $DC up -d --no-deps --force-recreate backend
 
             # Both services share the same server and network.
             # Always restart the frontend after a backend deployment
             # so both containers stay in sync.
-            FRONTEND_COMPOSE="/home/ubuntu/luuna-frontend/infra/compose/docker-compose.yml"
-            FRONTEND_ENV="/home/ubuntu/luuna-frontend/.env"
+            FRONTEND_PROJECT="/home/ubuntu/luuna-frontend"
+            FRONTEND_COMPOSE="$FRONTEND_PROJECT/infra/compose/docker-compose.yml"
+            FRONTEND_ENV="$FRONTEND_PROJECT/.env"
             if [ -f "$FRONTEND_COMPOSE" ] && [ -f "$FRONTEND_ENV" ]; then
               echo "Restarting frontend..."
-              sudo docker compose -f "$FRONTEND_COMPOSE" --env-file "$FRONTEND_ENV" \
+              sudo docker compose \
+                -f "$FRONTEND_COMPOSE" \
+                --project-directory "$FRONTEND_PROJECT" \
+                --env-file "$FRONTEND_ENV" \
                 up -d --force-recreate
             fi
 
