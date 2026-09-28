@@ -96,6 +96,9 @@ jobs:
             sudo docker network inspect luuna-network >/dev/null 2>&1 \
               || sudo docker network create luuna-network
 
+            echo "Stopping old containers..."
+            $DC down --remove-orphans
+
             echo "Starting PostgreSQL..."
             $DC up -d db
 
@@ -113,8 +116,8 @@ jobs:
             echo "Seeding reference data..."
             $DC run --rm --no-deps backend npm run prisma:seed
 
-            echo "Recreating backend container..."
-            $DC up -d --no-deps --force-recreate backend
+            echo "Starting backend..."
+            $DC up -d backend
 
             # Both services share the same server and network.
             # Always restart the frontend after a backend deployment
@@ -124,12 +127,16 @@ jobs:
             FRONTEND_ENV="$FRONTEND_PROJECT/.env"
             if [ -f "$FRONTEND_COMPOSE" ] && [ -f "$FRONTEND_ENV" ]; then
               echo "Restarting frontend..."
-              sudo docker rm -f luuna-frontend 2>/dev/null || true
               sudo docker compose \
                 -f "$FRONTEND_COMPOSE" \
                 --project-directory "$FRONTEND_PROJECT" \
                 --env-file "$FRONTEND_ENV" \
-                up -d --force-recreate
+                down --remove-orphans
+              sudo docker compose \
+                -f "$FRONTEND_COMPOSE" \
+                --project-directory "$FRONTEND_PROJECT" \
+                --env-file "$FRONTEND_ENV" \
+                up -d
             fi
 
             sudo docker image prune -f
