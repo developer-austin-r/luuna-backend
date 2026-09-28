@@ -109,11 +109,35 @@ jobs:
               -u "${{ github.actor }}" \
               --password-stdin
 
+            # Pull the new image FIRST before tearing down the running container.
+            # If the pull fails the old container keeps serving traffic.
             echo "Pulling latest image..."
             sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull --quiet
 
+            # Ensure the shared overlay network exists before starting any service.
+            # The backend compose owns this network; the frontend joins it as external.
+            echo "Ensuring luuna-network exists..."
+            sudo docker network inspect luuna-network >/dev/null 2>&1 \
+              || sudo docker network create luuna-network
+
+            # Start DB first and wait until it passes its healthcheck.
             echo "Starting PostgreSQL..."
             sudo docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d db
+
+            echo "Waiting for PostgreSQL to be healthy..."
+            for i in $(seq 1 30); do
+              STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' luuna-backend-db 2>/dev/null || echo "missing")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "PostgreSQL is healthy."
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "PostgreSQL did not become healthy in time."
+                exit 1
+              fi
+              echo "Waiting... ($i/30)"
+              sleep 5
+            done
 
             # Apply committed Prisma migrations using the newly pulled image.
             # This happens before the backend is recreated, so a failed
