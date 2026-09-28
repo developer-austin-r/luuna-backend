@@ -26,7 +26,7 @@ services:
     ports:
       - "${BACKEND_PORT:-3001}:3000"
     env_file:
-      - ../../.env
+      - .env
     environment:
       NODE_ENV: ${NODE_ENV:-production}
     depends_on:
