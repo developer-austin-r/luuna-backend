@@ -89,24 +89,15 @@ jobs:
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io \
               -u "${{ github.actor }}" --password-stdin
 
-            echo "Pulling latest backend image..."
-            $DC pull --quiet
-
-            # Backend owns luuna-network — create it if it does not exist yet.
+            # Ensure shared network exists (owned by backend, joined by frontend as external).
             sudo docker network inspect luuna-network >/dev/null 2>&1 \
               || sudo docker network create luuna-network
 
-            echo "Stopping old containers..."
-            $DC down --remove-orphans
-
-            echo "Starting PostgreSQL..."
-            $DC up -d db
-
-            echo "Waiting for PostgreSQL to be healthy..."
+            echo "Waiting for PostgreSQL to be healthy (must already be running)..."
             for i in $(seq 1 30); do
               STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' luuna-backend-db 2>/dev/null || echo "missing")
               [ "$STATUS" = "healthy" ] && echo "PostgreSQL is healthy." && break
-              [ "$i" -eq 30 ] && echo "ERROR: PostgreSQL did not become healthy in time." && exit 1
+              [ "$i" -eq 30 ] && echo "ERROR: PostgreSQL is not healthy. Start it manually first." && exit 1
               echo "  attempt $i/30..."; sleep 5
             done
 
@@ -116,28 +107,11 @@ jobs:
             echo "Seeding reference data..."
             $DC run --rm --no-deps backend npm run prisma:seed
 
-            echo "Starting backend..."
-            $DC up -d backend
+            echo "Pulling latest backend image..."
+            $DC pull backend
 
-            # Both services share the same server and network.
-            # Always restart the frontend after a backend deployment
-            # so both containers stay in sync.
-            FRONTEND_PROJECT="/home/ubuntu/luuna-frontend"
-            FRONTEND_COMPOSE="$FRONTEND_PROJECT/infra/compose/docker-compose.yml"
-            FRONTEND_ENV="$FRONTEND_PROJECT/.env"
-            if [ -f "$FRONTEND_COMPOSE" ] && [ -f "$FRONTEND_ENV" ]; then
-              echo "Restarting frontend..."
-              sudo docker compose \
-                -f "$FRONTEND_COMPOSE" \
-                --project-directory "$FRONTEND_PROJECT" \
-                --env-file "$FRONTEND_ENV" \
-                down --remove-orphans
-              sudo docker compose \
-                -f "$FRONTEND_COMPOSE" \
-                --project-directory "$FRONTEND_PROJECT" \
-                --env-file "$FRONTEND_ENV" \
-                up -d
-            fi
+            echo "Recreating backend container only..."
+            $DC up -d backend
 
             sudo docker image prune -f
 
