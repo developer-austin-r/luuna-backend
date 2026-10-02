@@ -86,21 +86,27 @@ jobs:
               exit 1
             fi
 
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io \
-              -u "${{ github.actor }}" --password-stdin
+            # Ensure the shared external network exists before any compose commands.
+            if ! sudo docker network inspect luuna-network >/dev/null 2>&1; then
+              echo "Creating luuna-network..."
+              sudo docker network create luuna-network
+            fi
 
-            # Ensure shared network exists (owned by backend, joined by frontend as external).
-            sudo docker network inspect luuna-network >/dev/null 2>&1 \
-              || sudo docker network create luuna-network
+            # Login with sudo so credentials are available to sudo docker compose.
+            echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io \
+              -u "${{ github.actor }}" --password-stdin
 
             echo "Pulling latest backend image..."
             $DC pull backend
 
-            echo "Waiting for PostgreSQL to be healthy (must already be running)..."
+            echo "Starting db and backend on luuna-network..."
+            $DC up -d db backend
+
+            echo "Waiting for PostgreSQL to be healthy..."
             for i in $(seq 1 30); do
               STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' luuna-backend-db 2>/dev/null || echo "missing")
               [ "$STATUS" = "healthy" ] && echo "PostgreSQL is healthy." && break
-              [ "$i" -eq 30 ] && echo "ERROR: PostgreSQL is not healthy. Start it manually first." && exit 1
+              [ "$i" -eq 30 ] && echo "ERROR: PostgreSQL did not become healthy in time." && exit 1
               echo "  attempt $i/30..."; sleep 5
             done
 
@@ -118,3 +124,4 @@ jobs:
             echo "=== Running containers ==="
             sudo docker ps
             echo "Backend deployment complete."
+
