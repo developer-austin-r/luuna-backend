@@ -42,4 +42,4 @@ volumes:
 
 networks:
   luuna-network:
-    driver: bridge
+    external: true
