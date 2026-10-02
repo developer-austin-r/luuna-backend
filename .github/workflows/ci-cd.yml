@@ -93,6 +93,9 @@ jobs:
             sudo docker network inspect luuna-network >/dev/null 2>&1 \
               || sudo docker network create luuna-network
 
+            echo "Pulling latest backend image..."
+            $DC pull backend
+
             echo "Waiting for PostgreSQL to be healthy (must already be running)..."
             for i in $(seq 1 30); do
               STATUS=$(sudo docker inspect --format='{{.State.Health.Status}}' luuna-backend-db 2>/dev/null || echo "missing")
@@ -107,10 +110,7 @@ jobs:
             echo "Seeding reference data..."
             $DC run --rm --no-deps backend npm run prisma:seed
 
-            echo "Pulling latest backend image..."
-            $DC pull backend
-
-            echo "Recreating backend container only..."
+            echo "Starting backend container..."
             $DC up -d backend
 
             sudo docker image prune -f
