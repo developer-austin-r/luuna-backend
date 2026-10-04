@@ -47,16 +47,9 @@ chmod 600 /home/ubuntu/luuna-backend/.env
 Use a long, unique value for `DB_PASSWORD`; it is also used to initialize the
 persistent PostgreSQL database volume.
 
-### 3. Create `docker-compose.yml`
+### 3. Automatic `docker-compose.yml` Sync
 
-Copy the repository template to the server before the first deployment:
-
-```bash
-cp docker-compose.yml.template /home/ubuntu/luuna-backend/docker-compose.yml
-```
-
-The template includes both the backend and a persistent PostgreSQL 16 service.
-If you create the file directly, use:
+`docker-compose.yml` is stored in the Git repository root and is automatically synced to `/home/ubuntu/luuna-backend/docker-compose.yml` on EC2 by GitHub Actions during every deployment. You do not need to create or edit `docker-compose.yml` manually on the server.
 
 ```bash
 cat > /home/ubuntu/luuna-backend/docker-compose.yml << 'EOF'
