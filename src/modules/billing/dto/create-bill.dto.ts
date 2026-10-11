@@ -80,11 +80,23 @@ export class CreateBillDto {
   @IsString()
   customerAddress?: string;
 
+  @ApiPropertyOptional({ description: 'Bill-level discount rate percentage' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountRate?: number;
+
   @ApiPropertyOptional({ description: 'Bill-level discount' })
   @IsOptional()
   @IsNumber()
   @Min(0)
   discount?: number;
+
+  @ApiPropertyOptional({ description: 'Bill-level tax rate percentage' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  taxRate?: number;
 
   @ApiPropertyOptional({ description: 'Bill-level tax' })
   @IsOptional()
