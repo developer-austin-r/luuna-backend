@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "bills" ADD COLUMN "tax_rate" DECIMAL(5,2) NOT NULL DEFAULT 0.00;
