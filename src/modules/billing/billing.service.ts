@@ -14,7 +14,9 @@ export class BillingService {
       customerMobile,
       customerEmail,
       customerAddress,
+      discountRate: billDiscountRate = 0,
       discount: billDiscount = 0,
+      taxRate: billTaxRate = 0,
       tax: billTax = 0,
       paymentMethod = 'CASH',
       status = 'PAID',
@@ -47,17 +49,30 @@ export class BillingService {
     const totalAmount = subtotal - billDiscount + billTax;
     const billNumber = `BILL-${Date.now().toString().slice(-8)}`;
 
+    let validBilledById: string | null = null;
+    if (billedBy) {
+      const userExists = await this.prisma.user.findFirst({
+        where: {
+          OR: [{ id: billedBy }, { email: billedBy }, { name: billedBy }],
+        },
+        select: { id: true },
+      });
+      validBilledById = userExists ? userExists.id : null;
+    }
+
     return this.prisma.bill.create({
       data: {
         billNumber,
-        billedBy: billedBy ?? null,
+        billedBy: validBilledById,
         customerName: customerName ?? null,
         customerMobile: customerMobile ?? null,
         customerEmail: customerEmail ?? null,
         customerAddress: customerAddress ?? null,
         subtotal: new Prisma.Decimal(subtotal),
         discount: new Prisma.Decimal(billDiscount),
+        discountRate: new Prisma.Decimal(billDiscountRate),
         tax: new Prisma.Decimal(billTax),
+        taxRate: new Prisma.Decimal(billTaxRate),
         totalAmount: new Prisma.Decimal(totalAmount),
         paymentMethod,
         status,
