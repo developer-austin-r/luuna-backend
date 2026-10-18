@@ -250,7 +250,7 @@ export class ProductService {
   async findAll(query: ProductQueryDto) {
     const {
       page = 1,
-      limit = 10,
+      limit = 25,
       search,
       brandId,
       categoryId,
@@ -262,7 +262,9 @@ export class ProductService {
       sortOrder = 'desc',
     } = query;
 
-    const skip = (page - 1) * limit;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Number(limit) || 25);
+    const skip = (pageNum - 1) * limitNum;
 
     const where: Prisma.ProductWhereInput = {
       ...(includeDeleted ? {} : { deletedAt: null }),
@@ -301,7 +303,7 @@ export class ProductService {
       this.prisma.product.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { [sortBy]: sortOrder },
         include: {
           brand: true,
@@ -321,7 +323,7 @@ export class ProductService {
       }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / limitNum);
 
     const resolvedData = data.map((p) => this.resolveProductMedia(p));
 
@@ -329,11 +331,11 @@ export class ProductService {
       data: resolvedData,
       meta: {
         total,
-        page,
-        limit,
+        page: pageNum,
+        limit: limitNum,
         totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        hasNextPage: pageNum < totalPages,
+        hasPreviousPage: pageNum > 1,
       },
     });
   }
