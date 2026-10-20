@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SendWhatsAppDto, WhatsAppChannel } from './dto';
 
@@ -6,28 +11,25 @@ export interface WhatsAppSendResult {
   success: boolean;
   phone: string;
   logId: string;
-  url?: string;
+  messageId?: string;
   error?: string;
 }
 
 /**
- * WhatsAppService — reusable service for sending WhatsApp messages via
- * the wa.me deep-link strategy and persisting every attempt to the
- * `whatsapp_message_logs` table.
- *
- * This service is intentionally transport-agnostic. The `url` returned
- * in the result is the wa.me link that the frontend can open.  When a
- * real WhatsApp Business API key is wired up later, swap out the
- * _buildUrl() implementation without touching callers.
+ * Sends approved WhatsApp template messages through Meta's Cloud API and
+ * persists each attempt to the `whatsapp_message_logs` table.
  */
 @Injectable()
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   /**
-   * Send (log) a WhatsApp message and persist the attempt.
+   * Send a template message through Meta and persist the result.
    *
    * @param dto      Message payload
    * @param sentBy   User ID of the staff member triggering the send
@@ -36,41 +38,117 @@ export class WhatsAppService {
     dto: SendWhatsAppDto,
     sentBy?: string,
   ): Promise<WhatsAppSendResult> {
-    const { phone, message, channel = WhatsAppChannel.BILLING, entityId } = dto;
-
+    const {
+      phone,
+      templateParameters,
+      channel = WhatsAppChannel.BILLING,
+      entityId,
+    } = dto;
     const normalizedPhone = this.normalizePhone(phone);
-    const url = this.buildUrl(normalizedPhone, message);
-
-    let logId: string;
-    try {
-      const log = await this.prisma.whatsAppMessageLog.create({
-        data: {
-          phone: normalizedPhone,
-          message,
-          status: 'SENT',
-          channel,
-          entityId: entityId ?? null,
-          sentBy: sentBy ?? null,
-        },
-        select: { id: true },
-      });
-      logId = log.id;
-      this.logger.log(
-        `WhatsApp link generated for ${normalizedPhone} [${channel}${entityId ? `:${entityId}` : ''}]`,
-      );
-    } catch (err) {
-      this.logger.error('Failed to persist WhatsApp log', err);
-      // Still return something useful even if DB write fails
-      return {
-        success: false,
+    const templateName = this.config.get<string>(
+      'WHATSAPP_TEMPLATE_NAME',
+      'jaspers_market_order_confirmation_v1',
+    );
+    const log = await this.prisma.whatsAppMessageLog.create({
+      data: {
         phone: normalizedPhone,
-        logId: '',
-        url,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
+        message: `${templateName}: ${templateParameters
+          .map((value, index) => `{{${index + 1}}} ${value}`)
+          .join(' | ')}`,
+        status: 'PENDING',
+        channel,
+        entityId: entityId ?? null,
+        sentBy: sentBy ?? null,
+      },
+      select: { id: true },
+    });
 
-    return { success: true, phone: normalizedPhone, logId, url };
+    try {
+      const accessToken = this.config.get<string>('WHATSAPP_ACCESS_TOKEN');
+      const phoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+      const apiVersion = this.config.get<string>(
+        'WHATSAPP_API_VERSION',
+        'v25.0',
+      );
+      const templateLanguage = this.config.get<string>(
+        'WHATSAPP_TEMPLATE_LANGUAGE',
+        'en_US',
+      );
+
+      if (!accessToken || !phoneNumberId) {
+        throw new ServiceUnavailableException(
+          'WhatsApp Cloud API is not configured. Set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID on the backend.',
+        );
+      }
+
+      const response = await fetch(
+        `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: normalizedPhone,
+            type: 'template',
+            template: {
+              name: templateName,
+              language: { code: templateLanguage },
+              components: [
+                {
+                  type: 'body',
+                  parameters: templateParameters.map((text) => ({
+                    type: 'text',
+                    text,
+                  })),
+                },
+              ],
+            },
+          }),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      const result = (await response.json()) as MetaWhatsAppResponse;
+
+      if (!response.ok) {
+        const apiError =
+          result.error?.message ?? `Meta API returned HTTP ${response.status}`;
+        throw new Error(apiError);
+      }
+
+      const messageId = result.messages?.[0]?.id;
+      if (!messageId) {
+        throw new Error('Meta API response did not include a message ID.');
+      }
+
+      await this.prisma.whatsAppMessageLog.update({
+        where: { id: log.id },
+        data: { status: 'SENT', errorMessage: null },
+      });
+      this.logger.log(
+        `WhatsApp template accepted by Meta [${channel}${entityId ? `:${entityId}` : ''}]`,
+      );
+
+      return {
+        success: true,
+        phone: normalizedPhone,
+        logId: log.id,
+        messageId,
+      };
+    } catch (err) {
+      const error =
+        err instanceof Error ? err.message : 'Unknown WhatsApp API error';
+      await this.prisma.whatsAppMessageLog.update({
+        where: { id: log.id },
+        data: { status: 'FAILED', errorMessage: error },
+      });
+      this.logger.error(
+        `WhatsApp Cloud API send failed for log ${log.id}: ${error}`,
+      );
+      return { success: false, phone: normalizedPhone, logId: log.id, error };
+    }
   }
 
   /**
@@ -121,9 +199,9 @@ export class WhatsAppService {
     if (digits.length === 10) return `91${digits}`;
     return digits;
   }
+}
 
-  /** Builds a wa.me deep-link URL. */
-  private buildUrl(phone: string, text: string): string {
-    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-  }
+interface MetaWhatsAppResponse {
+  messages?: Array<{ id: string }>;
+  error?: { message?: string };
 }

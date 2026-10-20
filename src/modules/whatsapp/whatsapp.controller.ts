@@ -25,13 +25,12 @@ export class WhatsAppController {
   constructor(private readonly whatsAppService: WhatsAppService) {}
 
   /**
-   * Log a WhatsApp send attempt and return a wa.me deep-link URL.
-   * The frontend opens this URL in a new tab to launch WhatsApp Web / app.
+   * Send a WhatsApp template message through Meta's Cloud API.
    */
   @Post('send')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Log a WhatsApp message send and return wa.me link' })
-  @ApiCreatedResponse({ description: 'Message logged; wa.me URL returned.' })
+  @ApiOperation({ summary: 'Send a WhatsApp template message through Meta' })
+  @ApiCreatedResponse({ description: 'Meta API send result returned.' })
   async send(@Body() dto: SendWhatsAppDto, @CurrentUser() user?: JwtPayload) {
     return this.whatsAppService.send(dto, user?.sub);
   }

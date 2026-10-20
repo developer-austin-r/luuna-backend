@@ -19,6 +19,18 @@ export const validationSchema = Joi.object({
   AWS_ACCESS_KEY_ID: Joi.string().optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
   AWS_S3_BASE_URL: Joi.string().uri().optional(),
+  // WhatsApp Cloud API credentials are checked when sending, not at startup.
+  WHATSAPP_ACCESS_TOKEN: Joi.string().allow('').optional(),
+  WHATSAPP_PHONE_NUMBER_ID: Joi.string().pattern(/^\d+$/).allow('').optional(),
+  WHATSAPP_API_VERSION: Joi.string()
+    .pattern(/^v\d+\.\d+$/)
+    .default('v25.0'),
+  WHATSAPP_TEMPLATE_NAME: Joi.string()
+    .pattern(/^[a-zA-Z0-9_]+$/)
+    .default('jaspers_market_order_confirmation_v1'),
+  WHATSAPP_TEMPLATE_LANGUAGE: Joi.string()
+    .pattern(/^[a-z]{2}_[A-Z]{2}$/)
+    .default('en_US'),
   // JWT / Auth configuration
   JWT_SECRET: Joi.string().optional(),
   JWT_REFRESH_SECRET: Joi.string().optional(),

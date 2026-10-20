@@ -1,4 +1,7 @@
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsEnum,
   IsOptional,
   IsString,
@@ -24,12 +27,24 @@ export class SendWhatsAppDto {
   })
   phone: string;
 
-  @ApiProperty({ description: 'WhatsApp message text' })
-  @IsString()
-  @MaxLength(4096)
-  message: string;
+  @ApiProperty({
+    description:
+      'Body template values in the approved WhatsApp template placeholder order',
+    example: ['John Doe', 'BILL-12345678', 'Oct 20, 2026'],
+    minItems: 3,
+    maxItems: 3,
+  })
+  @IsArray()
+  @ArrayMinSize(3)
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  @MaxLength(256, { each: true })
+  templateParameters: string[];
 
-  @ApiPropertyOptional({ enum: WhatsAppChannel, default: WhatsAppChannel.BILLING })
+  @ApiPropertyOptional({
+    enum: WhatsAppChannel,
+    default: WhatsAppChannel.BILLING,
+  })
   @IsOptional()
   @IsEnum(WhatsAppChannel)
   channel?: WhatsAppChannel;
