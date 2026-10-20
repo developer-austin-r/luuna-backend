@@ -36,8 +36,9 @@ model User {
   status         String    @default("ACTIVE") @map("status")
   tokens         Token[]
   orders         Order[]
-  activityLogs   ActivityLog[]
-  bills          Bill[]
+  activityLogs        ActivityLog[]
+  bills               Bill[]
+  whatsAppMessageLogs WhatsAppMessageLog[]
 
   @@index([roleId])
   @@map("users")
@@ -523,4 +524,36 @@ model BillItem {
 
   @@index([billId])
   @@map("bill_items")
+}
+
+// ──────────────────────────────────────────────────────────────
+// WHATSAPP MESSAGE LOGS
+// ──────────────────────────────────────────────────────────────
+
+enum WhatsAppMessageStatus {
+  SENT
+  FAILED
+  PENDING
+}
+
+model WhatsAppMessageLog {
+  id          String                 @id @default(uuid()) @map("id")
+  phone       String                 @map("phone")
+  message     String                 @db.Text @map("message")
+  status      WhatsAppMessageStatus  @default(SENT) @map("status")
+  /// Channel that triggered this message, e.g. "BILLING", "ORDER", "MANUAL"
+  channel     String                 @default("BILLING") @map("channel")
+  /// ID of the related entity (billId, orderId, etc.)
+  entityId    String?                @map("entity_id")
+  sentBy      String?                @map("sent_by")
+  errorMessage String?               @db.Text @map("error_message")
+  createdAt   DateTime               @default(now()) @map("created_at")
+
+  sentByUser  User?                  @relation(fields: [sentBy], references: [id], onDelete: SetNull)
+
+  @@index([phone])
+  @@index([channel, entityId])
+  @@index([sentBy])
+  @@index([createdAt])
+  @@map("whatsapp_message_logs")
 }

@@ -14,6 +14,7 @@ import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { ActivitySessionMiddleware } from './modules/activity-log/middleware/activity-session.middleware';
 import { ReportModule } from './modules/report/report.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
@@ -47,6 +48,7 @@ import { validationSchema } from './common/constants';
     ActivityLogModule,
     ReportModule,
     BillingModule,
+    WhatsAppModule,
     HealthModule,
   ],
   controllers: [],
