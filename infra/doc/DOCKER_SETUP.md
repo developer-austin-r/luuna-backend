@@ -1,23 +1,15 @@
-# Local Docker Development Setup
+# Infrastructure & Docker Setup
 
-Use this file to quickly spin up a complete development environment with PostgreSQL and the NestJS application.
+Docker container configurations, compose files, and operational scripts have been centralized into the root `/infra` directory.
 
 ## Quick Start
 
 ```bash
-# 1. Start all services
-docker-compose up -d
+# 1. Start local PostgreSQL database
+./infra/scripts/start-local.sh
 
-# 2. Check if everything is running
-docker-compose ps
-
-# 3. View logs
-docker-compose logs -f app
-
-# 4. Access the application
-# API: http://localhost:3000
-# Swagger Docs: http://localhost:3000/api/docs
-# Health: http://localhost:3000/health
+# 2. Build and run full-stack containers
+docker compose -f infra/compose/docker-compose.yml up -d --build
 ```
 
 ## Services

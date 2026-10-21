@@ -8,6 +8,8 @@ import { seedStatuses } from './seeders/statuses.seed';
 import { seedRoles } from './seeders/roles.seed';
 import { seedModulesAndActions } from './seeders/activity-log.seed';
 import { seedPermissions } from './seeders/permissions.seed';
+import { seedRolePermissions } from './seeders/role-permissions.seed';
+import { seedMenus } from './seeders/menus.seed';
 
 dotenv.config();
 
@@ -24,16 +26,35 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('Seeding database with roles, statuses, categories and brands...');
+  console.log('\n🌱 Seeding database...\n');
 
+  // ── Core data ──────────────────────────────────────────────────
+  console.log('── Roles');
   await seedRoles(prisma);
+
+  console.log('── Statuses');
   await seedStatuses(prisma);
+
+  console.log('── Brands');
   await seedBrands(prisma);
+
+  console.log('── Categories');
   await seedCategories(prisma);
+
+  console.log('── Activity Log Modules & Actions');
   await seedModulesAndActions(prisma);
+
+  // ── RBAC ───────────────────────────────────────────────────────
+  console.log('\n── Permissions');
   await seedPermissions(prisma);
-  
-  console.log('Seeding finished successfully.');
+
+  console.log('\n── Role → Permissions');
+  await seedRolePermissions(prisma);
+
+  console.log('\n── Menus');
+  await seedMenus(prisma);
+
+  console.log('\n✅ Seeding finished successfully.\n');
 }
 
 main()

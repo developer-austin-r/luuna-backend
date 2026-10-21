@@ -29,6 +29,8 @@ import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { Auth0Guard } from './guards/auth0.guard';
+import { ConfigService } from '@nestjs/config';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -36,7 +38,31 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly activityLogService: ActivityLogService,
+    private readonly configService: ConfigService,
   ) {}
+
+  @Get('oauth/login')
+  @UseGuards(Auth0Guard)
+  oauthLogin() {
+    // Initiates the Auth0 OAuth flow. The Auth0Guard handles the redirect.
+  }
+
+  @Get('oauth/callback')
+  @UseGuards(Auth0Guard)
+  async oauthCallback(@Req() req: Request, @Res() res: Response) {
+    const profile = req.user;
+    await this.authService.oauthLogin(
+      profile,
+      res,
+      req.ip,
+      req.headers['user-agent'],
+      req['sessionId'],
+    );
+    const dashboardUrl =
+      this.configService.get<string>('auth.frontendDashboardUrl') ||
+      'http://localhost:3000/dashboard';
+    res.redirect(dashboardUrl);
+  }
 
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)

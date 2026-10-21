@@ -118,16 +118,22 @@ async function main() {
     // Hash password.
     const hashedPassword = await hash(password, 12);
 
+    // Extract name from email prefix
+    const name = email.split('@')[0];
+
     // Create admin user.
     const user = await prisma.user.create({
       data: {
         email,
+        name,
         password: hashedPassword,
         roleId: adminRole.id,
+        isVerified: true,
       },
       select: {
         id: true,
         email: true,
+        name: true,
         role: { select: { name: true } },
         createdAt: true,
       },
@@ -135,6 +141,7 @@ async function main() {
 
     console.log('✅  Admin user created successfully!\n');
     console.log(`   ID:    ${user.id}`);
+    console.log(`   Name:  ${user.name ?? 'N/A'}`);
     console.log(`   Email: ${user.email}`);
     console.log(`   Role:  ${user.role?.name ?? 'Unknown'}`);
     console.log(`   Date:  ${user.createdAt.toISOString()}\n`);

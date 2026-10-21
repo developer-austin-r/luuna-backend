@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import type { Response } from 'express';
 import { AuthRepository } from './auth.repository';
 import { LoginDto } from './dto/login.dto';
@@ -17,6 +18,7 @@ import { EmailService } from '../email/email.service';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { TokenType } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { RbacService, MenuNode } from '../rbac/rbac.service';
 
 const INVALID_CREDENTIALS = 'Invalid email or password.';
 const EMAIL_NOT_VERIFIED = 'Email is not verified. Please check your inbox.';
@@ -26,6 +28,12 @@ export type SafeUser = {
   email: string;
   name: string | null;
   role: string | null;
+};
+
+export type AuthResponse = {
+  user: SafeUser;
+  permissions: string[];
+  menus: MenuNode[];
 };
 
 @Injectable()
@@ -47,6 +55,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly emailService: EmailService,
     private readonly activityLogService: ActivityLogService,
+    private readonly rbacService: RbacService,
   ) {
     this.jwtSecret = this.configService.get<string>('auth.jwtSecret')!;
     this.jwtRefreshSecret = this.configService.get<string>(
@@ -92,8 +101,8 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       password: passwordHash,
-      isVerified: true,
-      role: { connect: { id: '00000000-0000-0000-0000-000000000002' } }, // User role (client)
+      isVerified: false,
+      role: { connect: { id: '00000000-0000-0000-0000-000000000003' } }, // Standard User role
     });
 
     const verifyExpiry = this.configService.get<number>(
@@ -107,8 +116,6 @@ export class AuthService {
       ipAddress,
       userAgent,
     );
-
-    await this.emailService.sendWelcomeEmail(user.email, user.name || 'User');
     await this.emailService.sendVerificationEmail(
       user.email,
       user.name || 'User',
@@ -159,6 +166,11 @@ export class AuthService {
       description: `User signup completed (email verified)`,
     });
 
+    const user = await this.authRepository.findUserById(matchedToken.userId);
+    if (user) {
+      await this.emailService.sendWelcomeEmail(user.email, user.name || 'User');
+    }
+
     return 'Your email has been verified successfully.';
   }
 
@@ -168,7 +180,7 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
     sessionId?: string,
-  ): Promise<{ user: SafeUser }> {
+  ): Promise<AuthResponse> {
     const user = await this.authRepository.findUserByEmail(dto.email);
 
     if (!user) {
@@ -275,6 +287,13 @@ export class AuthService {
       metadata: { email: user.email },
     });
 
+    // Fetch RBAC data
+    const roleId = user.role?.id ?? null;
+    const permissions = roleId
+      ? await this.rbacService.getPermissionsForRole(roleId)
+      : [];
+    const menus = await this.rbacService.getMenusForPermissions(permissions);
+
     return {
       user: {
         id: user.id,
@@ -282,8 +301,106 @@ export class AuthService {
         name: user.name,
         role: user.role?.name ?? null,
       },
+      permissions,
+      menus,
     };
   }
+
+  /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+  async oauthLogin(
+    profile: any,
+    res: Response,
+    ipAddress?: string,
+    userAgent?: string,
+    sessionId?: string,
+  ): Promise<void> {
+    let email =
+      profile.emails && profile.emails.length > 0
+        ? profile.emails[0].value
+        : null;
+    if (!email && profile._json && profile._json.email) {
+      email = profile._json.email;
+    }
+
+    if (!email) {
+      throw new UnauthorizedException(
+        'OAuth provider did not return an email address',
+      );
+    }
+
+    let user = await this.authRepository.findUserByEmail(email);
+
+    if (!user) {
+      const bcryptRounds = this.configService.get<number>(
+        'auth.bcryptRounds',
+        10,
+      );
+      const randomPassword = randomBytes(32).toString('hex');
+      const passwordHash = await hash(randomPassword, bcryptRounds);
+
+      await this.authRepository.createUser({
+        name:
+          profile.displayName || profile.name?.givenName || email.split('@')[0],
+        email: email,
+        password: passwordHash,
+        isVerified: true,
+        role: { connect: { id: '00000000-0000-0000-0000-000000000002' } }, // User role (client)
+      });
+      user = await this.authRepository.findUserByEmail(email);
+
+      if (user) {
+        await this.activityLogService.log({
+          userId: user.id,
+          sessionId,
+          moduleName: 'authentication',
+          actionName: 'oauth_signup',
+          ipAddress,
+          userAgent,
+          description: `User signed up via OAuth`,
+          metadata: { email: user.email, provider: profile.provider },
+        });
+      }
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Failed to create or find user');
+    }
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new UnauthorizedException('Account is locked.');
+    }
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role?.name ?? null,
+    };
+
+    const accessToken = this.generateAccessToken(payload);
+    const refreshTokenPayload = { ...payload, type: 'refresh' };
+    const refreshToken = this.generateRefreshToken(refreshTokenPayload);
+
+    await this.tokenService.generateToken(
+      user.id,
+      TokenType.REFRESH_TOKEN,
+      this.parseDurationToMinutes(this.refreshExpiresIn),
+      ipAddress,
+      userAgent,
+    );
+
+    this.setAuthCookies(res, accessToken, refreshToken, true);
+
+    await this.activityLogService.log({
+      userId: user.id,
+      sessionId,
+      moduleName: 'authentication',
+      actionName: 'oauth_login',
+      ipAddress,
+      userAgent,
+      description: `User logged in via OAuth`,
+      metadata: { email: user.email, provider: profile.provider },
+    });
+  }
+  /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 
   async forgotPassword(
     dto: ForgotPasswordDto,
@@ -396,7 +513,7 @@ export class AuthService {
     res: Response,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<{ user: SafeUser }> {
+  ): Promise<AuthResponse> {
     const user = await this.authRepository.findUserByEmail(payload.email);
     if (
       !user ||
@@ -426,6 +543,13 @@ export class AuthService {
 
     this.setAuthCookies(res, accessToken, refreshToken, true);
 
+    // Fetch RBAC data
+    const roleId = user.role?.id ?? null;
+    const permissions = roleId
+      ? await this.rbacService.getPermissionsForRole(roleId)
+      : [];
+    const menus = await this.rbacService.getMenusForPermissions(permissions);
+
     return {
       user: {
         id: user.id,
@@ -433,6 +557,8 @@ export class AuthService {
         name: user.name,
         role: user.role?.name ?? null,
       },
+      permissions,
+      menus,
     };
   }
 

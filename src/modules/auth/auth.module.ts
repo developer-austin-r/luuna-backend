@@ -8,9 +8,11 @@ import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { Auth0Strategy } from './strategies/auth0.strategy';
 import { TokenModule } from '../token/token.module';
 import { EmailModule } from '../email/email.module';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
+import { RbacModule } from '../rbac/rbac.module';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     TokenModule,
     EmailModule,
     ActivityLogModule,
+    RbacModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -29,7 +32,13 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthRepository, JwtStrategy, JwtRefreshStrategy],
+  providers: [
+    AuthService,
+    AuthRepository,
+    JwtStrategy,
+    JwtRefreshStrategy,
+    Auth0Strategy,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -15,6 +15,7 @@ import {
   UploadedFile,
   UseInterceptors,
   Req,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -26,8 +27,9 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { ProductService } from './product.service';
+import { BarcodeService } from './barcode.service';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
@@ -55,6 +57,7 @@ export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly activityLogService: ActivityLogService,
+    private readonly barcodeService: BarcodeService,
   ) {}
 
   @Get()
@@ -90,6 +93,31 @@ export class ProductController {
   })
   async getCategories() {
     return this.productService.getCategories();
+  }
+
+  @Get('lookup')
+  @ApiOperation({
+    summary: 'Look up product by barcode or SKU (for POS billing scanner)',
+  })
+  @ApiQuery({
+    name: 'code',
+    required: true,
+    type: String,
+    description: 'Barcode value or SKU of the product',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Product found.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Product not found.',
+  })
+  async lookupProduct(@Query('code') code: string) {
+    if (!code || !code.trim()) {
+      throw new BadRequestException('Query param "code" is required');
+    }
+    return this.productService.findByBarcodeOrSku(code.trim());
   }
 
   @Get('statuses/all')
@@ -204,6 +232,19 @@ export class ProductController {
     return this.productService.deleteCategory(id);
   }
 
+  @Get('monthly-stock')
+  @ApiOperation({
+    summary:
+      'Get monthly stock report (sales in last 30 days and current stock)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Monthly stock report fetched successfully.',
+  })
+  async getMonthlyStockReport() {
+    return this.productService.getMonthlyStockReport();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get product details by ID' })
   @ApiParam({ name: 'id', description: 'Product UUID' })
@@ -233,6 +274,28 @@ export class ProductController {
       },
     });
     return product;
+  }
+
+  @Get(':id/barcode')
+  @ApiOperation({ summary: 'Get dynamically generated barcode image' })
+  @ApiParam({ name: 'id', description: 'Product UUID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Barcode image retrieved successfully.',
+  })
+  async getBarcodeImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    const product = await this.productService.findOne(id);
+    if (!product.barcode) {
+      throw new BadRequestException('Product does not have a barcode assigned');
+    }
+    const buffer = await this.barcodeService.generateBarcodeImage(
+      product.barcode,
+    );
+    res.setHeader('Content-Type', 'image/png');
+    res.send(buffer);
   }
 
   @Post()

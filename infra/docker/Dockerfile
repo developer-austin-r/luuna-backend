@@ -42,10 +42,9 @@ COPY --from=builder /app/dist ./dist
 
 # Copy Prisma files for runtime
 COPY --from=builder /app/prisma ./prisma
-# Needed by the deployment workflow's `prisma migrate deploy` command.
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
-# Create app user for security (Debian syntax)
+# Create app user for security
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -s /sbin/nologin nestjs
 
 # Change ownership

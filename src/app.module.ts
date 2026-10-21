@@ -13,6 +13,7 @@ import { StorageModule } from './common/storage/storage.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 import { ActivitySessionMiddleware } from './modules/activity-log/middleware/activity-session.middleware';
 import { ReportModule } from './modules/report/report.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
@@ -29,10 +30,10 @@ import { validationSchema } from './common/constants';
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => [
+      useFactory: () => [
         {
-          ttl: config.get<number>('rateLimit.loginWindowMinutes', 15) * 60,
-          limit: config.get<number>('rateLimit.loginAttempts', 5),
+          ttl: 60, // 1 minute
+          limit: 100, // 100 requests per minute globally
         },
       ],
     }),
@@ -45,6 +46,7 @@ import { validationSchema } from './common/constants';
     OrderModule,
     ActivityLogModule,
     ReportModule,
+    BillingModule,
     HealthModule,
   ],
   controllers: [],

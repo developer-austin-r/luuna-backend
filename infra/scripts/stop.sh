@@ -2,6 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+INFRA_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-docker compose -f "$ROOT_DIR/docker-compose.yml" down "$@"
+docker compose -f "$INFRA_DIR/compose/docker-compose.yml" down "$@"

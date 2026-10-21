@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BarcodeService } from './barcode.service';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
@@ -37,6 +38,7 @@ export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly barcodeService: BarcodeService,
   ) {}
 
   async uploadImage(
@@ -248,7 +250,7 @@ export class ProductService {
   async findAll(query: ProductQueryDto) {
     const {
       page = 1,
-      limit = 10,
+      limit = 25,
       search,
       brandId,
       categoryId,
@@ -260,7 +262,9 @@ export class ProductService {
       sortOrder = 'desc',
     } = query;
 
-    const skip = (page - 1) * limit;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Number(limit) || 25);
+    const skip = (pageNum - 1) * limitNum;
 
     const where: Prisma.ProductWhereInput = {
       ...(includeDeleted ? {} : { deletedAt: null }),
@@ -299,7 +303,7 @@ export class ProductService {
       this.prisma.product.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { [sortBy]: sortOrder },
         include: {
           brand: true,
@@ -319,7 +323,7 @@ export class ProductService {
       }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / limitNum);
 
     const resolvedData = data.map((p) => this.resolveProductMedia(p));
 
@@ -327,13 +331,42 @@ export class ProductService {
       data: resolvedData,
       meta: {
         total,
-        page,
-        limit,
+        page: pageNum,
+        limit: limitNum,
         totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        hasNextPage: pageNum < totalPages,
+        hasPreviousPage: pageNum > 1,
       },
     });
+  }
+
+  /**
+   * Lookup product by barcode or SKU (for POS billing scanner).
+   */
+  async findByBarcodeOrSku(code: string) {
+    const product = await this.prisma.product.findFirst({
+      where: {
+        deletedAt: null,
+        OR: [{ barcode: code }, { sku: { equals: code, mode: 'insensitive' } }],
+      },
+      include: {
+        brand: true,
+        status: true,
+        productCategories: {
+          include: { category: true },
+        },
+        images: { orderBy: { displayOrder: 'asc' } },
+        inventories: true,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException(
+        `Product with barcode or SKU "${code}" not found`,
+      );
+    }
+
+    return this.serializeBigInt(this.resolveProductMedia(product));
   }
 
   /**
@@ -372,6 +405,7 @@ export class ProductService {
   async create(createProductDto: CreateProductDto) {
     const {
       sku,
+      barcode,
       slug,
       brandId,
       brandName,
@@ -433,6 +467,21 @@ export class ProductService {
       throw new BadRequestException(
         'Enforced limit of maximum 1 video per product',
       );
+    }
+
+    // Resolve and validate barcode
+    let finalBarcode = barcode;
+    if (!finalBarcode) {
+      finalBarcode = await this.barcodeService.generateUniqueBarcodeValue();
+    } else {
+      const existingBarcode = await this.prisma.product.findUnique({
+        where: { barcode: finalBarcode },
+      });
+      if (existingBarcode) {
+        throw new ConflictException(
+          `Product with Barcode "${finalBarcode}" already exists`,
+        );
+      }
     }
 
     // Check for SKU / Slug conflicts
@@ -569,6 +618,7 @@ export class ProductService {
           ...productData,
           id: productId,
           sku,
+          barcode: finalBarcode,
           slug,
           brandId: finalBrandId,
           basePrice: new Prisma.Decimal(basePrice),
@@ -660,6 +710,7 @@ export class ProductService {
 
     const {
       sku,
+      barcode,
       slug,
       brandId,
       brandName,
@@ -723,6 +774,21 @@ export class ProductService {
 
     if (rating !== undefined && (rating < 0 || rating > 5)) {
       throw new BadRequestException('Rating must be between 0 and 5');
+    }
+
+    // Check Barcode uniqueness if changed
+    if (barcode && barcode !== existing.barcode) {
+      const conflictBarcode = await this.prisma.product.findFirst({
+        where: {
+          barcode,
+          id: { not: id },
+        },
+      });
+      if (conflictBarcode) {
+        throw new ConflictException(
+          `Product with Barcode "${barcode}" already exists`,
+        );
+      }
     }
 
     // Check SKU / Slug uniqueness if changed
@@ -919,6 +985,7 @@ export class ProductService {
         data: {
           ...productData,
           sku,
+          barcode,
           slug,
           brandId: finalBrandId !== undefined ? finalBrandId : undefined,
           basePrice:
@@ -1549,6 +1616,43 @@ export class ProductService {
   async getStatuses() {
     return this.prisma.status.findMany({
       orderBy: { status: 'asc' },
+    });
+  }
+
+  async getMonthlyStockReport() {
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
+    const products = await this.prisma.product.findMany({
+      where: { deletedAt: null },
+      include: {
+        orderItems: {
+          where: {
+            order: {
+              orderedAt: { gte: oneMonthAgo },
+            },
+          },
+        },
+      },
+    });
+
+    return products.map((product) => {
+      const soldQuantity = product.orderItems.reduce(
+        (sum, item) => sum + Number(item.quantity),
+        0,
+      );
+      const balanceStock = product.stock;
+      const initialStock = balanceStock + soldQuantity;
+
+      return {
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        barcode: product.barcode || 'N/A',
+        initialStock,
+        soldQuantity,
+        balanceStock,
+      };
     });
   }
 }

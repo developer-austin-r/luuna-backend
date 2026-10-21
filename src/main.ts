@@ -34,7 +34,11 @@ async function bootstrap() {
     origin: corsOrigin === '*' ? true : corsOrigin || true,
     credentials: true,
   });
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
   app.use(compression());
   app.use(morgan('combined'));
   app.useGlobalPipes(
