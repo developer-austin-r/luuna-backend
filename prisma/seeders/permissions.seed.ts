@@ -1,92 +1,41 @@
 import type { PrismaClient } from '@prisma/client';
 
-<<<<<<< HEAD
-const PERMISSIONS = [
-=======
 /**
  * All system permissions.
  * Naming convention: resource.action
  */
 export const PERMISSIONS = [
   // ── Dashboard ─────────────────────────────────────────────────
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
   {
     id: '10000000-0000-0000-0000-000000000001',
     name: 'View Dashboard',
     slug: 'dashboard.view',
-<<<<<<< HEAD
-    description: 'View dashboard',
-  },
-=======
     description: 'View the main dashboard',
   },
 
   // ── Users ──────────────────────────────────────────────────────
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
   {
     id: '10000000-0000-0000-0000-000000000002',
     name: 'View Users',
     slug: 'users.view',
-<<<<<<< HEAD
-    description: 'View users',
-=======
     description: 'View user list and details',
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
   },
   {
     id: '10000000-0000-0000-0000-000000000003',
     name: 'Create Users',
     slug: 'users.create',
-<<<<<<< HEAD
-    description: 'Create users',
-=======
     description: 'Create new users',
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
   },
   {
     id: '10000000-0000-0000-0000-000000000004',
     name: 'Update Users',
     slug: 'users.update',
-<<<<<<< HEAD
-    description: 'Update users',
-=======
     description: 'Update existing users',
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
   },
   {
     id: '10000000-0000-0000-0000-000000000005',
     name: 'Delete Users',
     slug: 'users.delete',
-<<<<<<< HEAD
-    description: 'Delete users',
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000006',
-    name: 'View Billing',
-    slug: 'billing.view',
-    description: 'View billing',
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000007',
-    name: 'Create Invoice',
-    slug: 'invoice.create',
-    description: 'Create invoice',
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000008',
-    name: 'Update Invoice',
-    slug: 'invoice.update',
-    description: 'Update invoice',
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000009',
-    name: 'Delete Invoice',
-    slug: 'invoice.delete',
-    description: 'Delete invoice',
-  },
-  {
-    id: '10000000-0000-0000-0000-000000000010',
-=======
     description: 'Delete users from the system',
   },
 
@@ -181,18 +130,10 @@ export const PERMISSIONS = [
   // ── Reports ────────────────────────────────────────────────────
   {
     id: '10000000-0000-0000-0000-000000000019',
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
     name: 'View Reports',
     slug: 'reports.view',
     description: 'View reports',
   },
-<<<<<<< HEAD
-];
-
-export async function seedPermissions(
-  prisma: PrismaClient,
-): Promise<void> {
-=======
   {
     id: '10000000-0000-0000-0000-000000000020',
     name: 'Export Reports',
@@ -316,7 +257,6 @@ export async function seedPermissions(
 ];
 
 export async function seedPermissions(prisma: PrismaClient): Promise<void> {
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
   for (const permission of PERMISSIONS) {
     const result = await prisma.permission.upsert({
       where: { id: permission.id },
@@ -327,13 +267,6 @@ export async function seedPermissions(prisma: PrismaClient): Promise<void> {
       },
       create: permission,
     });
-<<<<<<< HEAD
-
-    console.log(`Upserted Permission: ${result.name}`);
-  }
-}
-=======
     console.log(`  Upserted Permission: ${result.name} (${result.slug})`);
   }
 }
->>>>>>> 49291d41cd5fecdd5e85d031ccb0591ea8e51f59
