@@ -31,6 +31,8 @@ export const validationSchema = Joi.object({
   WHATSAPP_TEMPLATE_LANGUAGE: Joi.string()
     .pattern(/^[a-z]{2}_[A-Z]{2}$/)
     .default('en_US'),
+  // Webhook verify token — set this to a long random secret you choose
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: Joi.string().allow('').optional(),
   // JWT / Auth configuration
   JWT_SECRET: Joi.string().optional(),
   JWT_REFRESH_SECRET: Joi.string().optional(),

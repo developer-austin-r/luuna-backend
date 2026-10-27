@@ -531,29 +531,35 @@ model BillItem {
 // ──────────────────────────────────────────────────────────────
 
 enum WhatsAppMessageStatus {
-  SENT
-  FAILED
   PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
 }
 
 model WhatsAppMessageLog {
-  id          String                 @id @default(uuid()) @map("id")
-  phone       String                 @map("phone")
-  message     String                 @db.Text @map("message")
-  status      WhatsAppMessageStatus  @default(SENT) @map("status")
-  /// Channel that triggered this message, e.g. "BILLING", "ORDER", "MANUAL"
-  channel     String                 @default("BILLING") @map("channel")
+  id                 String                @id @default(uuid()) @map("id")
+  phone              String                @map("phone")
+  message            String                @db.Text @map("message")
+  status             WhatsAppMessageStatus @default(PENDING) @map("status")
+  /// Channel that triggered this message, e.g. "BILLING", "ORDER", "MANUAL", "INBOUND"
+  channel            String                @default("BILLING") @map("channel")
   /// ID of the related entity (billId, orderId, etc.)
-  entityId    String?                @map("entity_id")
-  sentBy      String?                @map("sent_by")
-  errorMessage String?               @db.Text @map("error_message")
-  createdAt   DateTime               @default(now()) @map("created_at")
+  entityId           String?               @map("entity_id")
+  sentBy             String?               @map("sent_by")
+  errorMessage       String?               @db.Text @map("error_message")
+  /// Meta's wamid (e.g. wamid.xxx) — used to match webhook status callbacks
+  whatsappMessageId  String?               @unique @map("whatsapp_message_id")
+  statusUpdatedAt    DateTime?             @map("status_updated_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
 
-  sentByUser  User?                  @relation(fields: [sentBy], references: [id], onDelete: SetNull)
+  sentByUser  User?                 @relation(fields: [sentBy], references: [id], onDelete: SetNull)
 
   @@index([phone])
   @@index([channel, entityId])
   @@index([sentBy])
   @@index([createdAt])
+  @@index([whatsappMessageId])
   @@map("whatsapp_message_logs")
 }

@@ -125,7 +125,12 @@ export class WhatsAppService {
 
       await this.prisma.whatsAppMessageLog.update({
         where: { id: log.id },
-        data: { status: 'SENT', errorMessage: null },
+        data: {
+          status: 'SENT',
+          whatsappMessageId: messageId,
+          statusUpdatedAt: new Date(),
+          errorMessage: null,
+        },
       });
       this.logger.log(
         `WhatsApp template accepted by Meta [${channel}${entityId ? `:${entityId}` : ''}]`,
@@ -142,7 +147,7 @@ export class WhatsAppService {
         err instanceof Error ? err.message : 'Unknown WhatsApp API error';
       await this.prisma.whatsAppMessageLog.update({
         where: { id: log.id },
-        data: { status: 'FAILED', errorMessage: error },
+        data: { status: 'FAILED', errorMessage: error, statusUpdatedAt: new Date() },
       });
       this.logger.error(
         `WhatsApp Cloud API send failed for log ${log.id}: ${error}`,
