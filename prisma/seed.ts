@@ -10,6 +10,7 @@ import { seedModulesAndActions } from './seeders/activity-log.seed';
 import { seedPermissions } from './seeders/permissions.seed';
 import { seedRolePermissions } from './seeders/role-permissions.seed';
 import { seedMenus } from './seeders/menus.seed';
+import { seedPaymentMethodOptions } from './seeders/payment-method-options.seed';
 
 dotenv.config();
 
@@ -53,6 +54,9 @@ async function main() {
 
   console.log('\n── Menus');
   await seedMenus(prisma);
+
+  console.log('\n── Payment Method Options');
+  await seedPaymentMethodOptions(prisma);
 
   console.log('\n✅ Seeding finished successfully.\n');
 }

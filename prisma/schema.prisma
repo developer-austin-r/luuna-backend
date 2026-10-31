@@ -563,3 +563,44 @@ model WhatsAppMessageLog {
   @@index([whatsappMessageId])
   @@map("whatsapp_message_logs")
 }
+
+// ──────────────────────────────────────────────────────────────
+// PAYMENT METHOD OPTIONS (lookup table)
+// ──────────────────────────────────────────────────────────────
+
+model PaymentMethodOption {
+  id    String @id @default(uuid()) @map("id")
+  slug  String @unique @map("slug")
+  value String @map("value")
+
+  invoices BillingInvoice[]
+
+  @@map("payment_method_options")
+}
+
+// ──────────────────────────────────────────────────────────────
+// BILLING INVOICE
+// ──────────────────────────────────────────────────────────────
+
+model BillingInvoice {
+  id              String               @id @default(uuid()) @map("id")
+  /// Optional human-readable invoice name/label
+  name            String?              @map("name")
+  whatsappNumber  String?              @map("whatsapp_number")
+  address         String?              @db.Text @map("address")
+  paymentMethodId String?              @map("payment_method_id")
+  discount        Decimal              @default(0.00) @db.Decimal(10, 2) @map("discount")
+  tax             Decimal              @default(0.00) @db.Decimal(10, 2) @map("tax")
+  total           Decimal              @default(0.00) @db.Decimal(10, 2) @map("total")
+  notes           String?              @db.Text @map("notes")
+  /// S3 object key for the generated PDF, e.g. billing_invoice/{id}/invoice.pdf
+  invoicePath     String?              @map("invoice_path")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  paymentMethod   PaymentMethodOption? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  @@index([paymentMethodId])
+  @@index([createdAt])
+  @@map("billing_invoices")
+}
