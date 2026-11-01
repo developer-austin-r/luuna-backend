@@ -77,10 +77,7 @@ export class InvoiceController {
   @Get()
   @ApiOperation({ summary: 'List all invoices (paginated)' })
   @ApiOkResponse({ description: 'Invoices listed.' })
-  findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.invoiceService.findAll(
       page ? Number(page) : 1,
       limit ? Number(limit) : 20,

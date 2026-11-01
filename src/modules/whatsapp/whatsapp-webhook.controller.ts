@@ -53,7 +53,9 @@ export class WhatsAppWebhookController {
    * We must respond with the challenge string in plain text and HTTP 200.
    */
   @Get()
-  @ApiOperation({ summary: 'Meta WhatsApp webhook verification (GET challenge)' })
+  @ApiOperation({
+    summary: 'Meta WhatsApp webhook verification (GET challenge)',
+  })
   @ApiOkResponse({ description: 'Returns hub.challenge on success.' })
   @ApiQuery({ name: 'hub.mode', required: false })
   @ApiQuery({ name: 'hub.verify_token', required: false })
@@ -64,7 +66,11 @@ export class WhatsAppWebhookController {
     @Query('hub.challenge') challenge?: string,
     @Res() res?: Response,
   ): void {
-    const result = this.webhookService.verifySubscription(mode, token, challenge);
+    const result = this.webhookService.verifySubscription(
+      mode,
+      token,
+      challenge,
+    );
 
     if (!result) {
       throw new ForbiddenException('Webhook verification failed');

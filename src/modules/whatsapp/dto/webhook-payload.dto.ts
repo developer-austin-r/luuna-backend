@@ -44,14 +44,41 @@ export interface MetaIncomingMessage {
   from: string; // sender phone number (international, no +)
   id: string; // wamid
   timestamp: string;
-  type: 'text' | 'image' | 'document' | 'audio' | 'video' | 'sticker' | 'location' | 'contacts' | 'interactive' | 'button' | 'order' | 'unknown';
+  type:
+    | 'text'
+    | 'image'
+    | 'document'
+    | 'audio'
+    | 'video'
+    | 'sticker'
+    | 'location'
+    | 'contacts'
+    | 'interactive'
+    | 'button'
+    | 'order'
+    | 'unknown';
   text?: { body: string };
   image?: { id: string; mime_type: string; sha256: string; caption?: string };
-  document?: { id: string; filename?: string; mime_type: string; sha256: string };
+  document?: {
+    id: string;
+    filename?: string;
+    mime_type: string;
+    sha256: string;
+  };
   audio?: { id: string; mime_type: string };
-  sticker?: { id: string; animated: boolean; mime_type: string; sha256: string };
+  sticker?: {
+    id: string;
+    animated: boolean;
+    mime_type: string;
+    sha256: string;
+  };
   video?: { id: string; mime_type: string; sha256: string; caption?: string };
-  location?: { latitude: number; longitude: number; name?: string; address?: string };
+  location?: {
+    latitude: number;
+    longitude: number;
+    name?: string;
+    address?: string;
+  };
   interactive?: { type: string; [key: string]: unknown };
   button?: { payload: string; text: string };
   context?: { from: string; id: string };

@@ -79,8 +79,7 @@ export class InvoiceService {
       name: dto.name,
       whatsappNumber: dto.whatsappNumber,
       address: dto.address,
-      paymentMethod:
-        dto.paymentMethodLabel ?? invoice.paymentMethod?.value,
+      paymentMethod: dto.paymentMethodLabel ?? invoice.paymentMethod?.value,
       discount,
       tax,
       total: dto.total,
@@ -112,7 +111,9 @@ export class InvoiceService {
     } catch (err) {
       await this.prisma.billingInvoice.delete({ where: { id: invoice.id } });
       this.logger.error('S3 upload failed', err);
-      throw new InternalServerErrorException('Failed to upload invoice to storage');
+      throw new InternalServerErrorException(
+        'Failed to upload invoice to storage',
+      );
     }
 
     // ── 4. Update DB record with path ─────────────────────────────

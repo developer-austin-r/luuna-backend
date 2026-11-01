@@ -38,7 +38,9 @@ export class WhatsAppWebhookService {
     token: string | undefined,
     challenge: string | undefined,
   ): string | null {
-    const expectedToken = this.config.get<string>('WHATSAPP_WEBHOOK_VERIFY_TOKEN');
+    const expectedToken = this.config.get<string>(
+      'WHATSAPP_WEBHOOK_VERIFY_TOKEN',
+    );
 
     if (!expectedToken) {
       this.logger.error(
@@ -93,13 +95,14 @@ export class WhatsAppWebhookService {
 
         // Handle inbound customer messages
         for (const message of value.messages ?? []) {
-          await this.handleIncomingMessage(message, value.metadata?.phone_number_id).catch(
-            (err: unknown) => {
-              this.logger.error(
-                `Error processing inbound message ${message.id}: ${String(err)}`,
-              );
-            },
-          );
+          await this.handleIncomingMessage(
+            message,
+            value.metadata?.phone_number_id,
+          ).catch((err: unknown) => {
+            this.logger.error(
+              `Error processing inbound message ${message.id}: ${String(err)}`,
+            );
+          });
         }
       }
     }
@@ -118,7 +121,9 @@ export class WhatsAppWebhookService {
   private async handleStatusUpdate(status: MetaMessageStatus): Promise<void> {
     const newStatus = META_STATUS_MAP[status.status];
     if (!newStatus) {
-      this.logger.warn(`Unrecognised Meta status "${status.status}" — skipping.`);
+      this.logger.warn(
+        `Unrecognised Meta status "${status.status}" — skipping.`,
+      );
       return;
     }
 
@@ -141,7 +146,9 @@ export class WhatsAppWebhookService {
 
     // Idempotency: same status, nothing to do.
     if (log.status === newStatus) {
-      this.logger.debug(`wamid ${status.id} already at status ${newStatus} — skipping.`);
+      this.logger.debug(
+        `wamid ${status.id} already at status ${newStatus} — skipping.`,
+      );
       return;
     }
 

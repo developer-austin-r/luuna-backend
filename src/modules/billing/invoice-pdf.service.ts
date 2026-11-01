@@ -97,7 +97,11 @@ export class InvoicePdfService {
 
       // ── Customer Details ─────────────────────────────────────────
       let yPos = 120;
-      doc.fillColor('#000000').font('Helvetica-Bold').fontSize(9).text('BILL TO', 50, yPos);
+      doc
+        .fillColor('#000000')
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .text('BILL TO', 50, yPos);
       yPos += 14;
 
       if (data.name) {
@@ -112,7 +116,10 @@ export class InvoicePdfService {
         yPos += 12;
       }
       if (data.address) {
-        doc.fillColor('#555555').fontSize(9).text(data.address, 50, yPos, { width: 220 });
+        doc
+          .fillColor('#555555')
+          .fontSize(9)
+          .text(data.address, 50, yPos, { width: 220 });
         yPos += doc.heightOfString(data.address, { width: 220 }) + 4;
       }
       if (data.paymentMethod) {
@@ -148,7 +155,10 @@ export class InvoicePdfService {
 
         // Alternate row shading
         if (data.items.indexOf(item) % 2 === 1) {
-          doc.rect(50, rowY - 2, 495, rowHeight).fillColor('#fafafa').fill();
+          doc
+            .rect(50, rowY - 2, 495, rowHeight)
+            .fillColor('#fafafa')
+            .fill();
         }
 
         doc
