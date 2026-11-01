@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -13,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from '../user/dto/change-password.dto';
 import { TokenService } from '../token/token.service';
 import { EmailService } from '../email/email.service';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -506,6 +508,63 @@ export class AuthService {
     });
 
     return 'Password reset successful.';
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+    ipAddress?: string,
+    userAgent?: string,
+    sessionId?: string,
+  ): Promise<{ message: string }> {
+    const user = await this.authRepository.findUserById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const isCurrentPasswordValid = await compare(
+      dto.currentPassword,
+      user.password,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const isSamePassword = await compare(dto.newPassword, user.password);
+    if (isSamePassword) {
+      throw new BadRequestException(
+        'New password cannot be the same as your current password',
+      );
+    }
+
+    const bcryptRounds = this.configService.get<number>(
+      'auth.bcryptRounds',
+      10,
+    );
+    const newPasswordHash = await hash(dto.newPassword, bcryptRounds);
+
+    await this.authRepository.updateUserPassword(userId, newPasswordHash);
+
+    // Invalidate all refresh tokens for this user
+    await this.tokenService.revokeAllUserRefreshTokens(userId);
+
+    await this.emailService.sendPasswordChangedEmail(
+      user.email,
+      user.name || 'User',
+    );
+
+    await this.activityLogService.log({
+      userId,
+      sessionId,
+      moduleName: 'password',
+      actionName: 'password_changed',
+      ipAddress,
+      userAgent,
+      description: 'Password changed successfully',
+    });
+
+    return { message: 'Password changed successfully' };
   }
 
   async refresh(
