@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   MaxLength,
 } from 'class-validator';
@@ -55,4 +56,21 @@ export class SendWhatsAppDto {
   @IsOptional()
   @IsString()
   entityId?: string;
+}
+
+export class SendInvoiceWhatsAppDto {
+  @ApiProperty({ description: 'Recipient phone number including country code' })
+  @IsString()
+  @Matches(/^\d{10,15}$/)
+  phone: string;
+
+  @ApiProperty() @IsString() @MaxLength(120) customerName: string;
+
+  @ApiProperty({ description: 'Public HTTPS URL of the generated invoice PDF' })
+  @IsUrl({ require_protocol: true })
+  @Matches(/^https:\/\//i)
+  @MaxLength(2048)
+  invoiceUrl: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() entityId?: string;
 }

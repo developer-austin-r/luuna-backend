@@ -17,7 +17,7 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { WhatsAppService } from './whatsapp.service';
-import { SendWhatsAppDto } from './dto';
+import { SendInvoiceWhatsAppDto, SendWhatsAppDto } from './dto';
 
 @ApiTags('WhatsApp')
 @Controller('whatsapp')
@@ -33,6 +33,20 @@ export class WhatsAppController {
   @ApiCreatedResponse({ description: 'Meta API send result returned.' })
   async send(@Body() dto: SendWhatsAppDto, @CurrentUser() user?: JwtPayload) {
     return this.whatsAppService.send(dto, user?.sub);
+  }
+
+  @Post('send-invoice')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary:
+      'Send an invoice link as a WhatsApp message from the business account',
+  })
+  @ApiCreatedResponse({ description: 'Invoice message send result returned.' })
+  async sendInvoice(
+    @Body() dto: SendInvoiceWhatsAppDto,
+    @CurrentUser() user?: JwtPayload,
+  ) {
+    return this.whatsAppService.sendInvoice(dto, user?.sub);
   }
 
   /**
