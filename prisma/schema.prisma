@@ -39,8 +39,7 @@ model User {
   activityLogs        ActivityLog[]
   bills               Bill[]
   whatsAppMessageLogs WhatsAppMessageLog[]
-
-   userReviews       UserReview[]
+  userReviews         UserReview[]
 
   @@index([roleId])
   @@map("users")
