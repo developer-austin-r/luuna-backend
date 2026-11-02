@@ -39,11 +39,33 @@ model User {
   activityLogs        ActivityLog[]
   bills               Bill[]
   whatsAppMessageLogs WhatsAppMessageLog[]
+  profile        UserProfile?
 
    userReviews       UserReview[]
 
   @@index([roleId])
   @@map("users")
+}
+
+model UserProfile {
+  id              String    @id @default(uuid()) @map("id")
+  userId          String    @unique @map("user_id")
+
+  mobileNumber    String?   @map("mobile_number")
+  dateOfBirth     DateTime? @db.Date @map("date_of_birth")
+  gender          String?   @db.VarChar(20) @map("gender")
+  address         String?   @db.Text @map("address")
+  district        String?   @db.VarChar(100) @map("district")
+  state           String?   @db.VarChar(100) @map("state")
+  pincode         String?   @db.VarChar(10) @map("pincode")
+  profileImageUrl String?   @map("profile_image_url")
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
 }
 
 model Brand {
