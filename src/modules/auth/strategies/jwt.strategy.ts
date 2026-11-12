@@ -9,8 +9,9 @@ import type { JwtPayload } from '../interfaces/jwt-payload.interface';
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(private readonly configService: ConfigService) {
     super({
-      // Extract access token from the HttpOnly cookie.
+      // Extract access token from Bearer header or HttpOnly cookie.
       jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
         (req: Request): string | null => {
           const token = (req?.cookies as Record<string, string>)?.access_token;
           return token ?? null;

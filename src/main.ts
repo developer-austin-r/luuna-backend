@@ -60,6 +60,7 @@ async function bootstrap() {
     .setDescription('Production-ready Luuna backend API documentation')
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth('access_token')
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

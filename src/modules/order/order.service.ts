@@ -1,5 +1,9 @@
-// top import fix
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto, UpdateOrderDto } from './dto';
 import { ShipmentStatus } from '@prisma/client';
@@ -90,7 +94,11 @@ export class OrderService {
         where: { id: order.id },
         include: {
           orderItems: {
-            include: { product: true },
+            include: {
+              product: {
+                include: { images: true },
+              },
+            },
           },
           shipment: true,
           user: true,
@@ -103,10 +111,31 @@ export class OrderService {
     return this.prisma.order.findMany({
       include: {
         orderItems: {
-          include: { product: true },
+          include: {
+            product: {
+              include: { images: true },
+            },
+          },
         },
         shipment: true,
         user: true,
+      },
+      orderBy: { orderedAt: 'desc' },
+    });
+  }
+
+  async findByUser(userId: string) {
+    return this.prisma.order.findMany({
+      where: { userId },
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              include: { images: true },
+            },
+          },
+        },
+        shipment: true,
       },
       orderBy: { orderedAt: 'desc' },
     });
@@ -117,7 +146,11 @@ export class OrderService {
       where: { id },
       include: {
         orderItems: {
-          include: { product: true },
+          include: {
+            product: {
+              include: { images: true },
+            },
+          },
         },
         shipment: true,
         user: true,
@@ -128,6 +161,48 @@ export class OrderService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
     return order;
+  }
+
+  async cancelUserOrder(id: string, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { shipment: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    if (order.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to cancel this order',
+      );
+    }
+
+    if (order.orderStatus === 'CANCELLED') {
+      throw new BadRequestException('Order is already cancelled');
+    }
+
+    if (order.orderStatus !== 'PENDING' && order.orderStatus !== 'PROCESSING') {
+      throw new BadRequestException(
+        `Order cannot be cancelled in status "${order.orderStatus}"`,
+      );
+    }
+
+    return this.prisma.order.update({
+      where: { id },
+      data: { orderStatus: 'CANCELLED' },
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              include: { images: true },
+            },
+          },
+        },
+        shipment: true,
+      },
+    });
   }
 
   async update(id: string, updateOrderDto: UpdateOrderDto) {
@@ -190,7 +265,11 @@ export class OrderService {
         where: { id },
         include: {
           orderItems: {
-            include: { product: true },
+            include: {
+              product: {
+                include: { images: true },
+              },
+            },
           },
           shipment: true,
           user: true,
