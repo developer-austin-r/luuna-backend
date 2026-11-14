@@ -40,6 +40,7 @@ model User {
   bills               Bill[]
   whatsAppMessageLogs WhatsAppMessageLog[]
   profile        UserProfile?
+  wishlists      Wishlist[]
 
    userReviews       UserReview[]
 
@@ -140,6 +141,7 @@ model Product {
   orderItems        OrderItem[]
 
  userReviews       UserReview[]
+ wishlists         Wishlist[]
  
   @@index([brandId])
   @@index([statusId])
@@ -650,3 +652,25 @@ model BillingInvoice {
   @@index([createdAt])
   @@map("billing_invoices")
 }
+
+// ──────────────────────────────────────────────────────────────
+// WISHLIST
+// ──────────────────────────────────────────────────────────────
+
+model Wishlist {
+  id        String   @id @default(uuid()) @map("id")
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Prevent the same product being added twice by one user
+  @@unique([userId, productId])
+
+  @@index([userId])
+  @@index([productId])
+  @@map("wishlists")
+}
+
