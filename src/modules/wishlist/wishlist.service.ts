@@ -67,13 +67,22 @@ export class WishlistService {
    * Handles concurrent additions safely without unique constraint errors (P2002).
    */
   async addToWishlist(userId: string, productId: string) {
-    // Check if product exists and is active
+    // Check if product exists, is not soft-deleted, and has an active status.
+    // Note: Out-of-stock products with active status remain wish-listable.
     const product = await this.prisma.product.findFirst({
-      where: { id: productId, deletedAt: null },
+      where: {
+        id: productId,
+        deletedAt: null,
+        status: {
+          slug: 'active',
+        },
+      },
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException(
+        'Product not found or is currently not available',
+      );
     }
 
     const item = await this.prisma.wishlist.upsert({
