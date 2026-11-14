@@ -7,6 +7,19 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCouponDto, UpdateCouponDto } from './dto';
 
+interface CouponLockedRow {
+  id: string;
+  code: string;
+  status: string;
+  active_date: Date | null;
+  expiry_date: Date;
+  minimum_order_amount: string | number;
+  redemption_limit: number | null;
+  redeemed_count: number;
+  discount_type: string;
+  discount_value: string | number;
+}
+
 @Injectable()
 export class CouponService {
   constructor(private readonly prisma: PrismaService) {}
@@ -238,14 +251,15 @@ export class CouponService {
 
     return this.prisma.$transaction(async (tx) => {
       // Row-level lock (FOR UPDATE) guarantees serializable concurrency
-      const coupons = await tx.$queryRaw<any[]>`
+      const rawCoupons = await tx.$queryRaw<CouponLockedRow[]>`
         SELECT id, code, status, active_date, expiry_date, minimum_order_amount, redemption_limit, redeemed_count, discount_type, discount_value
         FROM coupons
         WHERE UPPER(code) = UPPER(${code}) AND deleted_at IS NULL
         FOR UPDATE
       `;
 
-      const coupon = coupons[0];
+      const coupons: CouponLockedRow[] = rawCoupons;
+      const coupon: CouponLockedRow | undefined = coupons[0];
       if (!coupon) {
         throw new NotFoundException(`Coupon with code "${code}" not found`);
       }
@@ -258,18 +272,22 @@ export class CouponService {
         );
       }
 
-      if (coupon.active_date && now < new Date(coupon.active_date)) {
-        throw new BadRequestException(`Coupon "${code}" is not active yet`);
+      if (coupon.active_date) {
+        const activeDate = new Date(coupon.active_date);
+        if (now < activeDate) {
+          throw new BadRequestException(`Coupon "${code}" is not active yet`);
+        }
       }
 
-      if (now > new Date(coupon.expiry_date)) {
+      const expiryDate = new Date(coupon.expiry_date);
+      if (now > expiryDate) {
         throw new BadRequestException(`Coupon "${code}" has expired`);
       }
 
       if (
         coupon.redemption_limit !== null &&
         coupon.redemption_limit !== undefined &&
-        coupon.redeemed_count >= coupon.redemption_limit
+        Number(coupon.redeemed_count) >= Number(coupon.redemption_limit)
       ) {
         throw new BadRequestException(
           `Coupon "${code}" redemption limit has been reached`,
