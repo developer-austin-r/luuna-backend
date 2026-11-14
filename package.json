@@ -23,10 +23,10 @@
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:migrate:deploy": "npx prisma migrate deploy",
     "prisma:studio": "npx prisma studio",
-    "prisma:seed": "npx ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"Node\"}' prisma/seed.ts",
-    "create:admin": "npx ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"Node\"}' scripts/create-admin.ts",
+    "prisma:seed": "npx ts-node prisma/seed.ts",
+    "create:admin": "npx ts-node scripts/create-admin.ts",
     "create:admin:prod": "node dist/scripts/create-admin.js",
-    "backfill:barcodes": "npx ts-node --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"Node\"}' scripts/backfill-barcodes.ts",
+    "backfill:barcodes": "npx ts-node scripts/backfill-barcodes.ts",
     "backfill:barcodes:prod": "node dist/scripts/backfill-barcodes.js"
   },
   "dependencies": {
