@@ -62,7 +62,7 @@ function validatePassword(password: string): void {
   if (!/[0-9]/.test(password)) {
     errors.push('At least one number');
   }
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
     errors.push('At least one special character');
   }
 
@@ -107,7 +107,9 @@ async function main() {
     }
 
     // Fetch Admin role.
-    const adminRole = await prisma.role.findUnique({ where: { name: 'Admin' } });
+    const adminRole = await prisma.role.findUnique({
+      where: { name: 'Admin' },
+    });
     if (!adminRole) {
       console.error(
         '\n❌  Admin role not found. Please run the seeder first:\n   npm run prisma:seed\n',

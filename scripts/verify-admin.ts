@@ -22,7 +22,12 @@ async function main() {
     where: { email: 'admin@example.com' },
     data: { isVerified: true },
   });
-  console.log('✅ Admin user verified status set to true:', updated.email, 'isVerified:', updated.isVerified);
+  console.log(
+    '✅ Admin user verified status set to true:',
+    updated.email,
+    'isVerified:',
+    updated.isVerified,
+  );
 }
 
 main()

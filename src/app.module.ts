@@ -17,6 +17,7 @@ import { BillingModule } from './modules/billing/billing.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { UserReviewModule } from './modules/user-review/user-review.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
@@ -53,6 +54,7 @@ import { validationSchema } from './common/constants';
     CustomerModule,
     UserReviewModule,
     WhatsAppModule,
+    WishlistModule,
     HealthModule,
   ],
   controllers: [],
