@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCouponDto, UpdateCouponDto } from './dto';
@@ -92,5 +93,66 @@ export class CouponService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  /**
+   * Validates whether a coupon code is active, within valid date range,
+   * has not exceeded redemption limits, and meets minimum order amount.
+   */
+  async validate(code: string, orderAmount: number = 0) {
+    const coupon = await this.prisma.coupon.findFirst({
+      where: {
+        code: code.toUpperCase(),
+        deletedAt: null,
+      },
+    });
+
+    if (!coupon) {
+      throw new NotFoundException(`Coupon with code "${code}" not found`);
+    }
+
+    const now = new Date();
+
+    if (coupon.status !== 'ACTIVE') {
+      throw new BadRequestException(
+        `Coupon "${code}" is currently ${coupon.status.toLowerCase()}`,
+      );
+    }
+
+    if (coupon.activeDate && now < coupon.activeDate) {
+      throw new BadRequestException(
+        `Coupon "${code}" is not active yet. It will become active on ${coupon.activeDate.toISOString().split('T')[0]}`,
+      );
+    }
+
+    if (now > coupon.expiryDate) {
+      throw new BadRequestException(
+        `Coupon "${code}" has expired on ${coupon.expiryDate.toISOString().split('T')[0]}`,
+      );
+    }
+
+    if (
+      coupon.redemptionLimit !== null &&
+      coupon.redemptionLimit !== undefined
+    ) {
+      if (coupon.redeemedCount >= coupon.redemptionLimit) {
+        throw new BadRequestException(
+          `Coupon "${code}" redemption limit has been reached`,
+        );
+      }
+    }
+
+    const minAmount = Number(coupon.minimumOrderAmount);
+    if (minAmount > 0 && orderAmount > 0 && orderAmount < minAmount) {
+      throw new BadRequestException(
+        `Minimum order amount of ₹${minAmount} is required to apply coupon "${code}"`,
+      );
+    }
+
+    return {
+      valid: true,
+      message: 'Coupon is valid and active',
+      coupon,
+    };
   }
 }

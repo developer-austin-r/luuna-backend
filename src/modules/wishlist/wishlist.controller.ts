@@ -33,13 +33,12 @@ import { GetWishlistQueryDto } from './dto/get-wishlist-query.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('wishlist')
 export class WishlistController {
-  constructor(private readonly wishlistService: WishlistService) { }
+  constructor(private readonly wishlistService: WishlistService) {}
 
   @Get()
   @ApiOperation({
     summary: 'Get user wishlist',
-    description:
-      'Returns paginated wishlist items for the authenticated user.',
+    description: 'Returns paginated wishlist items for the authenticated user.',
   })
   @ApiOkResponse({ description: 'Wishlist items retrieved successfully.' })
   @ApiUnauthorizedResponse({ description: 'Authentication required.' })

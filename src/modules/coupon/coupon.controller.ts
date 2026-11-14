@@ -7,8 +7,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CreateCouponDto, UpdateCouponDto } from './dto';
 import { CouponService } from './coupon.service';
 
@@ -27,6 +33,21 @@ export class CouponController {
   @ApiOkResponse({ description: 'Returns all coupons.' })
   findAll() {
     return this.couponService.findAll();
+  }
+
+  @Get('validate/:code')
+  @ApiOperation({
+    summary: 'Validate coupon activation and expiration',
+    description:
+      'Checks if a coupon is active, within valid date range, and ready for use.',
+  })
+  @ApiOkResponse({ description: 'Coupon validation status returned.' })
+  validate(
+    @Param('code') code: string,
+    @Query('orderAmount') orderAmount?: string,
+  ) {
+    const amount = orderAmount ? parseFloat(orderAmount) : 0;
+    return this.couponService.validate(code, isNaN(amount) ? 0 : amount);
   }
 
   @Get(':id')
