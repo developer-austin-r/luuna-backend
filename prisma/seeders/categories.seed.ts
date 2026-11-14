@@ -26,7 +26,8 @@ const categories = [
     id: 'd4d4d4d4-d4d4-d4d4-d4d4-d4d4d4d4d4d4',
     name: 'Shoes',
     slug: 'shoes',
-    description: 'From casual sneakers to formal leather dress shoes and boots.',
+    description:
+      'From casual sneakers to formal leather dress shoes and boots.',
     status: true,
   },
   {

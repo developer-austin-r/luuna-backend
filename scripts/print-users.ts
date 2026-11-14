@@ -22,7 +22,14 @@ async function main() {
     include: { role: true },
   });
   console.log('--- USERS IN DATABASE ---');
-  console.log(users.map(u => ({ id: u.id, email: u.email, role: u.role?.name, status: u.status })));
+  console.log(
+    users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      role: u.role?.name,
+      status: u.status,
+    })),
+  );
 }
 
 main()

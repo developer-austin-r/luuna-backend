@@ -1,4 +1,10 @@
-import { PrismaClient, OrderStatus, PaymentStatus, PaymentMethod, ShipmentStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  OrderStatus,
+  PaymentStatus,
+  PaymentMethod,
+  ShipmentStatus,
+} from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
@@ -21,74 +27,92 @@ async function seedOrders() {
   console.log('Seeding orders...');
 
   // 1. Get or create a status, a brand, and products
-  const activeStatus = await prisma.status.findFirst({ where: { slug: 'active' } });
+  const activeStatus = await prisma.status.findFirst({
+    where: { slug: 'active' },
+  });
   if (!activeStatus) {
     console.error('Active status not found, run main seed first');
     return;
   }
 
-  const brand = await prisma.brand.findFirst() || await prisma.brand.create({
-    data: { name: 'Luuna Luxury', status: true }
-  });
+  const brand =
+    (await prisma.brand.findFirst()) ||
+    (await prisma.brand.create({
+      data: { name: 'Luuna Luxury', status: true },
+    }));
 
-  const product1 = await prisma.product.findFirst({ where: { sku: 'BG-LTH-01' } }) || await prisma.product.create({
-    data: {
-      sku: 'BG-LTH-01',
-      name: 'Classic Leather Tote Bag',
-      slug: 'classic-leather-tote-bag',
-      basePrice: 159.00,
-      finalPrice: 159.00,
-      stock: 10,
-      availableStock: 10,
-      statusId: activeStatus.id,
-      brandId: brand.id
-    }
-  });
+  const product1 =
+    (await prisma.product.findFirst({ where: { sku: 'BG-LTH-01' } })) ||
+    (await prisma.product.create({
+      data: {
+        sku: 'BG-LTH-01',
+        name: 'Classic Leather Tote Bag',
+        slug: 'classic-leather-tote-bag',
+        basePrice: 159.0,
+        finalPrice: 159.0,
+        stock: 10,
+        availableStock: 10,
+        statusId: activeStatus.id,
+        brandId: brand.id,
+      },
+    }));
 
-  const product2 = await prisma.product.findFirst({ where: { sku: 'BG-LTH-02' } }) || await prisma.product.create({
-    data: {
-      sku: 'BG-LTH-02',
-      name: 'Luxury Suede Backpack',
-      slug: 'luxury-suede-backpack',
-      basePrice: 189.00,
-      finalPrice: 189.00,
-      stock: 5,
-      availableStock: 5,
-      statusId: activeStatus.id,
-      brandId: brand.id
-    }
-  });
+  const product2 =
+    (await prisma.product.findFirst({ where: { sku: 'BG-LTH-02' } })) ||
+    (await prisma.product.create({
+      data: {
+        sku: 'BG-LTH-02',
+        name: 'Luxury Suede Backpack',
+        slug: 'luxury-suede-backpack',
+        basePrice: 189.0,
+        finalPrice: 189.0,
+        stock: 5,
+        availableStock: 5,
+        statusId: activeStatus.id,
+        brandId: brand.id,
+      },
+    }));
 
   // 2. Get or create users
-  const user1 = await prisma.user.findFirst({ where: { email: 'emma.watson@gmail.com' } }) || await prisma.user.create({
-    data: {
-      email: 'emma.watson@gmail.com',
-      name: 'Emma Watson',
-      password: 'no-password-needed-for-seed',
-    }
-  });
+  const user1 =
+    (await prisma.user.findFirst({
+      where: { email: 'emma.watson@gmail.com' },
+    })) ||
+    (await prisma.user.create({
+      data: {
+        email: 'emma.watson@gmail.com',
+        name: 'Emma Watson',
+        password: 'no-password-needed-for-seed',
+      },
+    }));
 
-  const user2 = await prisma.user.findFirst({ where: { email: 'liam.neeson@outlook.com' } }) || await prisma.user.create({
-    data: {
-      email: 'liam.neeson@outlook.com',
-      name: 'Liam Neeson',
-      password: 'no-password-needed-for-seed',
-    }
-  });
+  const user2 =
+    (await prisma.user.findFirst({
+      where: { email: 'liam.neeson@outlook.com' },
+    })) ||
+    (await prisma.user.create({
+      data: {
+        email: 'liam.neeson@outlook.com',
+        name: 'Liam Neeson',
+        password: 'no-password-needed-for-seed',
+      },
+    }));
 
   // 3. Create Orders
   // Order 1: Emma Watson
-  const existingOrder1 = await prisma.order.findFirst({ where: { orderNumber: 'ORD-9832' } });
+  const existingOrder1 = await prisma.order.findFirst({
+    where: { orderNumber: 'ORD-9832' },
+  });
   if (!existingOrder1) {
-    const o1 = await prisma.order.create({
+    await prisma.order.create({
       data: {
         orderNumber: 'ORD-9832',
         userId: user1.id,
         orderStatus: OrderStatus.DELIVERED,
         paymentStatus: PaymentStatus.PAID,
         paymentMethod: PaymentMethod.CREDIT_CARD,
-        subtotal: 318.00,
-        discount: 0.00,
+        subtotal: 318.0,
+        discount: 0.0,
         tax: 25.44,
         shippingCharge: 14.99,
         totalAmount: 358.43,
@@ -97,11 +121,11 @@ async function seedOrders() {
           create: {
             productId: product1.id,
             quantity: 2,
-            price: 159.00,
-            discount: 0.00,
+            price: 159.0,
+            discount: 0.0,
             tax: 25.44,
-            total: 318.00
-          }
+            total: 318.0,
+          },
         },
         shipment: {
           create: {
@@ -115,26 +139,28 @@ async function seedOrders() {
             state: 'CA',
             postalCode: '90004',
             country: 'US',
-            phone: '+1234567890'
-          }
-        }
-      }
+            phone: '+1234567890',
+          },
+        },
+      },
     });
     console.log('Created seeded order: ORD-9832');
   }
 
   // Order 2: Liam Neeson
-  const existingOrder2 = await prisma.order.findFirst({ where: { orderNumber: 'ORD-9833' } });
+  const existingOrder2 = await prisma.order.findFirst({
+    where: { orderNumber: 'ORD-9833' },
+  });
   if (!existingOrder2) {
-    const o2 = await prisma.order.create({
+    await prisma.order.create({
       data: {
         orderNumber: 'ORD-9833',
         userId: user2.id,
         orderStatus: OrderStatus.PROCESSING,
         paymentStatus: PaymentStatus.PAID,
         paymentMethod: PaymentMethod.STRIPE,
-        subtotal: 189.00,
-        discount: 0.00,
+        subtotal: 189.0,
+        discount: 0.0,
         tax: 15.12,
         shippingCharge: 14.99,
         totalAmount: 219.11,
@@ -143,11 +169,11 @@ async function seedOrders() {
           create: {
             productId: product2.id,
             quantity: 1,
-            price: 189.00,
-            discount: 0.00,
+            price: 189.0,
+            discount: 0.0,
             tax: 15.12,
-            total: 189.00
-          }
+            total: 189.0,
+          },
         },
         shipment: {
           create: {
@@ -160,10 +186,10 @@ async function seedOrders() {
             state: 'FL',
             postalCode: '33139',
             country: 'US',
-            phone: '+1987654321'
-          }
-        }
-      }
+            phone: '+1987654321',
+          },
+        },
+      },
     });
     console.log('Created seeded order: ORD-9833');
   }
