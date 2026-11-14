@@ -8,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -24,6 +25,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { WishlistService } from './wishlist.service';
 import { AddWishlistDto } from './dto/add-wishlist.dto';
+import { GetWishlistQueryDto } from './dto/get-wishlist-query.dto';
 
 @ApiTags('wishlist')
 @ApiBearerAuth()
@@ -31,17 +33,21 @@ import { AddWishlistDto } from './dto/add-wishlist.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('wishlist')
 export class WishlistController {
-  constructor(private readonly wishlistService: WishlistService) {}
+  constructor(private readonly wishlistService: WishlistService) { }
 
   @Get()
   @ApiOperation({
     summary: 'Get user wishlist',
-    description: 'Returns all wishlist items for the authenticated user.',
+    description:
+      'Returns paginated wishlist items for the authenticated user.',
   })
   @ApiOkResponse({ description: 'Wishlist items retrieved successfully.' })
   @ApiUnauthorizedResponse({ description: 'Authentication required.' })
-  getUserWishlist(@CurrentUser() user: JwtPayload) {
-    return this.wishlistService.getUserWishlist(user.sub);
+  getUserWishlist(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: GetWishlistQueryDto,
+  ) {
+    return this.wishlistService.getUserWishlist(user.sub, query);
   }
 
   @Post()

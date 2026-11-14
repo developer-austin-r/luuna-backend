@@ -1,46 +1,70 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GetWishlistQueryDto } from './dto/get-wishlist-query.dto';
 
 @Injectable()
 export class WishlistService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Retrieves all wishlist items for the authenticated user with product details.
+   * Retrieves paginated wishlist items for the authenticated user with product details.
    */
-  async getUserWishlist(userId: string) {
-    const items = await this.prisma.wishlist.findMany({
-      where: {
-        userId,
-        product: {
-          deletedAt: null,
-        },
+  async getUserWishlist(userId: string, query?: GetWishlistQueryDto) {
+    const page = query?.page && query.page > 0 ? Number(query.page) : 1;
+    const limit = query?.limit && query.limit > 0 ? Number(query.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      userId,
+      product: {
+        deletedAt: null,
       },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        product: {
-          include: {
-            images: {
-              orderBy: { displayOrder: 'asc' },
-            },
-            brand: true,
-            status: true,
-            productCategories: {
-              include: {
-                category: true,
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.wishlist.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          product: {
+            include: {
+              images: {
+                orderBy: { displayOrder: 'asc' },
+              },
+              brand: true,
+              status: true,
+              productCategories: {
+                include: {
+                  category: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+      this.prisma.wishlist.count({ where }),
+    ]);
 
-    return items;
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      data: items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    };
   }
 
   /**
-   * Adds a product to the user's wishlist.
-   * If already added, returns the existing record idempotently.
+   * Adds a product to the user's wishlist idempotently using upsert.
+   * Handles concurrent additions safely without unique constraint errors (P2002).
    */
   async addToWishlist(userId: string, productId: string) {
     // Check if product exists and is active
@@ -52,33 +76,15 @@ export class WishlistService {
       throw new NotFoundException('Product not found');
     }
 
-    // Check if already in wishlist
-    const existing = await this.prisma.wishlist.findUnique({
+    const item = await this.prisma.wishlist.upsert({
       where: {
-        userId_productId: { userId, productId },
-      },
-      include: {
-        product: {
-          include: {
-            images: {
-              orderBy: { displayOrder: 'asc' },
-            },
-            brand: true,
-            status: true,
-          },
+        userId_productId: {
+          userId,
+          productId,
         },
       },
-    });
-
-    if (existing) {
-      return {
-        message: 'Product already in wishlist',
-        item: existing,
-      };
-    }
-
-    const created = await this.prisma.wishlist.create({
-      data: {
+      update: {},
+      create: {
         userId,
         productId,
       },
@@ -97,7 +103,7 @@ export class WishlistService {
 
     return {
       message: 'Product added to wishlist successfully',
-      item: created,
+      item,
     };
   }
 
