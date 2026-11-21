@@ -1,9 +1,9 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Injectable()
-export class CartAuthGuard extends JwtAuthGuard {
+export class OptionalJwtAuthGuard extends JwtAuthGuard {
   handleRequest<T>(error: unknown, user: T | false | null): T {
     if (error instanceof Error) throw error;
     if (error) throw new InternalServerErrorException();
