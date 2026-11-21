@@ -1,177 +1,222 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { createHash, randomBytes } from 'node:crypto';
+
 import { PrismaService } from '../../prisma/prisma.service';
 import { GetWishlistQueryDto } from './dto/get-wishlist-query.dto';
+
+export const WISHLIST_COOKIE_AGE = 30 * 24 * 60 * 60 * 1000;
+
+export type WishlistAction =
+  | { kind: 'list'; query: GetWishlistQueryDto }
+  | { kind: 'check' | 'add' | 'remove'; productId: string }
+  | { kind: 'summary' | 'clear' };
+
+const itemSelect = {
+  id: true,
+  userId: true,
+  productId: true,
+  createdAt: true,
+  product: {
+    include: {
+      images: { orderBy: { displayOrder: 'asc' } },
+      brand: true,
+      status: true,
+      productCategories: { include: { category: true } },
+    },
+  },
+} satisfies Prisma.WishlistSelect;
 
 @Injectable()
 export class WishlistService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Retrieves paginated wishlist items for the authenticated user with product details.
-   */
-  async getUserWishlist(userId: string, query?: GetWishlistQueryDto) {
-    const page = query?.page && query.page > 0 ? Number(query.page) : 1;
-    const limit = query?.limit && query.limit > 0 ? Number(query.limit) : 10;
-    const skip = (page - 1) * limit;
+  async access(action: WishlistAction, userId?: string, guestToken?: string) {
+    const token =
+      guestToken ??
+      (!userId && action.kind === 'add'
+        ? randomBytes(32).toString('hex')
+        : undefined);
+    const guestTokenHash = token
+      ? createHash('sha256').update(token).digest('hex')
+      : undefined;
 
-    const where = {
-      userId,
-      product: {
-        deletedAt: null,
-      },
-    };
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const now = new Date();
+            const guest = guestTokenHash
+              ? { guestTokenHash, expiresAt: { gt: now } }
+              : undefined;
+            if (userId && guest) await this.mergeGuest(tx, userId, guest);
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.wishlist.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          product: {
-            include: {
-              images: {
-                orderBy: { displayOrder: 'asc' },
-              },
-              brand: true,
-              status: true,
-              productCategories: {
-                include: {
-                  category: true,
-                },
-              },
-            },
+            const owner: Prisma.WishlistWhereInput = userId
+              ? { userId }
+              : (guest ?? { id: { in: [] } });
+            const visible = { ...owner, product: { deletedAt: null } };
+            const data = await this.execute(
+              tx,
+              action,
+              owner,
+              visible,
+              userId,
+              guestTokenHash,
+              now,
+            );
+
+            return {
+              data,
+              cookie: !userId && action.kind === 'add' ? token : undefined,
+            };
           },
-        },
-      }),
-      this.prisma.wishlist.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(total / limit) || 1;
-
-    return {
-      data: items,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    };
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error) {
+        if (
+          !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+          !['P2002', 'P2034'].includes(error.code)
+        ) {
+          throw error;
+        }
+        if (attempt === 3)
+          throw new ServiceUnavailableException(
+            'Your wishlist changed concurrently. Please try again.',
+          );
+      }
+    }
+    throw new ServiceUnavailableException('Could not load your wishlist.');
   }
 
-  /**
-   * Adds a product to the user's wishlist idempotently using upsert.
-   * Handles concurrent additions safely without unique constraint errors (P2002).
-   */
-  async addToWishlist(userId: string, productId: string) {
-    // Check if product exists, is not soft-deleted, and has an active status.
-    // Note: Out-of-stock products with active status remain wish-listable.
-    const product = await this.prisma.product.findFirst({
-      where: {
-        id: productId,
-        deletedAt: null,
-        status: {
-          slug: 'active',
-        },
-      },
-    });
-
-    if (!product) {
-      throw new NotFoundException(
-        'Product not found or is currently not available',
-      );
-    }
-
-    const item = await this.prisma.wishlist.upsert({
-      where: {
-        userId_productId: {
-          userId,
-          productId,
-        },
-      },
-      update: {},
-      create: {
-        userId,
-        productId,
-      },
-      include: {
-        product: {
-          include: {
-            images: {
-              orderBy: { displayOrder: 'asc' },
-            },
-            brand: true,
-            status: true,
+  private async execute(
+    tx: Prisma.TransactionClient,
+    action: WishlistAction,
+    owner: Prisma.WishlistWhereInput,
+    visible: Prisma.WishlistWhereInput,
+    userId: string | undefined,
+    guestTokenHash: string | undefined,
+    now: Date,
+  ) {
+    switch (action.kind) {
+      case 'summary':
+        return this.summary(tx, visible);
+      case 'list': {
+        const page = action.query.page ?? 1;
+        const limit = action.query.limit ?? 10;
+        const items = await tx.wishlist.findMany({
+          where: visible,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: itemSelect,
+        });
+        const total = await tx.wishlist.count({ where: visible });
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        return {
+          data: items,
+          authenticated: Boolean(userId),
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
           },
-        },
-      },
-    });
-
-    return {
-      message: 'Product added to wishlist successfully',
-      item,
-    };
-  }
-
-  /**
-   * Removes a product from the user's wishlist.
-   */
-  async removeFromWishlist(userId: string, productId: string) {
-    const existing = await this.prisma.wishlist.findUnique({
-      where: {
-        userId_productId: { userId, productId },
-      },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Product is not in your wishlist');
+        };
+      }
+      case 'check': {
+        const item = await tx.wishlist.findFirst({
+          where: { ...visible, productId: action.productId },
+          select: { id: true },
+        });
+        return { productId: action.productId, inWishlist: Boolean(item) };
+      }
+      case 'add': {
+        const productId = action.productId;
+        const product = await tx.product.findFirst({
+          where: { id: productId, deletedAt: null, status: { slug: 'active' } },
+          select: { id: true },
+        });
+        if (!product)
+          throw new NotFoundException('Product not found or unavailable.');
+        const expiresAt = new Date(now.getTime() + WISHLIST_COOKIE_AGE);
+        if (!userId && guestTokenHash) {
+          await tx.wishlist.deleteMany({
+            where: { guestTokenHash, expiresAt: { lte: now } },
+          });
+          await tx.wishlist.updateMany({ where: owner, data: { expiresAt } });
+        }
+        await tx.wishlist.createMany({
+          data: userId
+            ? { userId, productId }
+            : { guestTokenHash, productId, expiresAt },
+          skipDuplicates: true,
+        });
+        const item = await tx.wishlist.findFirstOrThrow({
+          where: { ...owner, productId },
+          select: itemSelect,
+        });
+        return {
+          message: 'Product added to wishlist',
+          item,
+          ...(await this.summary(tx, visible)),
+        };
+      }
+      case 'remove':
+        await tx.wishlist.deleteMany({
+          where: { ...owner, productId: action.productId },
+        });
+        return {
+          success: true,
+          message: 'Product removed from wishlist',
+          productId: action.productId,
+          ...(await this.summary(tx, visible)),
+        };
+      case 'clear': {
+        const { count } = await tx.wishlist.deleteMany({ where: owner });
+        return {
+          success: true,
+          message: 'Wishlist cleared',
+          deletedCount: count,
+          productIds: [],
+        };
+      }
     }
-
-    await this.prisma.wishlist.delete({
-      where: {
-        userId_productId: { userId, productId },
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Product removed from wishlist successfully',
-      productId,
-    };
   }
 
-  /**
-   * Checks whether a specific product is in the user's wishlist.
-   */
-  async checkWishlistStatus(userId: string, productId: string) {
-    const existing = await this.prisma.wishlist.findUnique({
-      where: {
-        userId_productId: { userId, productId },
-      },
-      select: { id: true },
+  private async summary(
+    tx: Prisma.TransactionClient,
+    where: Prisma.WishlistWhereInput,
+  ) {
+    const rows = await tx.wishlist.findMany({
+      where,
+      select: { productId: true },
     });
-
-    return {
-      productId,
-      inWishlist: !!existing,
-    };
+    return { productIds: rows.map(({ productId }) => productId) };
   }
 
-  /**
-   * Clears all products from user's wishlist.
-   */
-  async clearWishlist(userId: string) {
-    const { count } = await this.prisma.wishlist.deleteMany({
-      where: { userId },
+  private async mergeGuest(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    guest: { guestTokenHash: string; expiresAt: { gt: Date } },
+  ) {
+    const rows = await tx.wishlist.findMany({
+      where: { ...guest, product: { deletedAt: null } },
+      select: { productId: true, createdAt: true },
     });
-
-    return {
-      success: true,
-      message: 'Wishlist cleared successfully',
-      deletedCount: count,
-    };
+    if (rows.length) {
+      await tx.wishlist.createMany({
+        data: rows.map((row) => ({ ...row, userId })),
+        skipDuplicates: true,
+      });
+    }
+    await tx.wishlist.deleteMany({
+      where: { guestTokenHash: guest.guestTokenHash },
+    });
   }
 }

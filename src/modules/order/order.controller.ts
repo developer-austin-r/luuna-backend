@@ -4,6 +4,7 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -19,6 +20,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateOrderDto, UpdateOrderDto } from './dto';
+import { CreateCheckoutOrderDto } from './dto/create-checkout-order.dto';
 import { OrderService } from './order.service';
 import type { Request } from 'express';
 import { ActivityLogService } from '../activity-log/activity-log.service';
@@ -64,6 +66,15 @@ export class OrderController {
     return order;
   }
 
+  @Post('checkout')
+  @UseGuards(JwtAuthGuard)
+  createCheckout(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateCheckoutOrderDto,
+  ) {
+    return this.orderService.createCheckout(user.sub, dto);
+  }
+
   // ========================================
   // GET ORDERS OF CURRENT AUTHENTICATED USER
   // Must be declared before @Get(':id')
@@ -95,6 +106,16 @@ export class OrderController {
   @ApiOkResponse({ description: 'Returns all orders.' })
   findAll() {
     return this.orderService.findAll();
+  }
+
+  @Get(':id/confirmation')
+  @UseGuards(JwtAuthGuard)
+  @Header('Cache-Control', 'private, no-store')
+  getConfirmation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.orderService.getConfirmation(id, user.sub);
   }
 
   @Get(':id')
