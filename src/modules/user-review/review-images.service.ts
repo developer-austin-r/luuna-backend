@@ -24,7 +24,7 @@ export class ReviewImagesService {
     try {
       for (const file of files) {
         const buffer = await this.compress(file);
-        const key = `${userId}/${productId}/images/${randomUUID()}.webp`;
+        const key = `product-review/${userId}/${productId}/images/${randomUUID()}.webp`;
         keys.push(key);
         await this.storage.uploadFile({
           key,
