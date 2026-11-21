@@ -245,6 +245,12 @@ export class ProductController {
     return this.productService.getMonthlyStockReport();
   }
 
+  @Get('by-slug/:slug')
+  @ApiOperation({ summary: 'Resolve a product slug to its ID' })
+  findIdBySlug(@Param('slug') slug: string) {
+    return this.productService.findIdBySlug(slug);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get product details by ID' })
   @ApiParam({ name: 'id', description: 'Product UUID' })

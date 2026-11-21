@@ -743,7 +743,9 @@ model UserReview {
   userId    String    @map("user_id")
   productId String    @map("product_id")
   starRate  Int       @map("star_rate")
+  title     String?   @db.VarChar(100)
   review    String?   @db.Text
+  imageKeys String[]  @default([]) @map("image_keys")
   status    String    @default("PENDING")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -755,6 +757,7 @@ model UserReview {
   @@index([userId])
   @@index([productId])
   @@index([status])
+  @@index([productId, status, deletedAt, createdAt], map: "user_review_public_lookup_idx")
   @@map("user_review")
 }
 
