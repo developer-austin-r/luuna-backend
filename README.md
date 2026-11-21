@@ -177,4 +177,5 @@ prisma/
 
 - Prefer `DB_*` variables over hand-written `DATABASE_URL` values.
 - `DATABASE_URL` and `SHADOW_DATABASE_URL` are generated internally from `DB_*` values.
+- Razorpay analysis and operations are documented in [the system analysis](docs/razorpay-payment-analysis.md) and [payment operations guide](docs/razorpay-operations.md).
 - Use PostgreSQL `16` locally to match Docker and CI.

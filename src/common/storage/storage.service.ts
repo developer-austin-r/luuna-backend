@@ -32,6 +32,10 @@ export class StorageService implements IStorageService {
     return this.s3.generatePublicUrl(key);
   }
 
+  generateDownloadUrl(key: string, expiresInSeconds?: number): Promise<string> {
+    return this.s3.generateDownloadUrl(key, expiresInSeconds);
+  }
+
   extractObjectKey(urlOrKey: string): string {
     return this.s3.extractObjectKey(urlOrKey);
   }

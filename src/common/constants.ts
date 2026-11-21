@@ -13,6 +13,34 @@ export const validationSchema = Joi.object({
   DB_PASSWORD: Joi.string().required(),
   DB_SCHEMA: Joi.string().default('public'),
   CORS_ORIGIN: Joi.string().optional(),
+  PAYMENTS_ENABLED: Joi.string().valid('true', 'false').default('false'),
+  EMAIL_PAYMENT_NOTIFICATIONS_ENABLED: Joi.string()
+    .valid('true', 'false')
+    .default('false'),
+  PAYMENT_EXPIRATION_MINUTES: Joi.number().integer().min(5).default(30),
+  PAYMENT_RECONCILIATION_ENABLED: Joi.string()
+    .valid('true', 'false')
+    .default('true'),
+  PAYMENT_RECONCILIATION_INTERVAL_MINUTES: Joi.number()
+    .integer()
+    .min(5)
+    .default(60),
+  PAYMENT_CURRENCY: Joi.string().valid('INR').default('INR'),
+  RAZORPAY_KEY_ID: Joi.string().when('PAYMENTS_ENABLED', {
+    is: 'true',
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  RAZORPAY_KEY_SECRET: Joi.string().when('PAYMENTS_ENABLED', {
+    is: 'true',
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  RAZORPAY_WEBHOOK_SECRET: Joi.string().when('PAYMENTS_ENABLED', {
+    is: 'true',
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
   // AWS S3 configuration
   AWS_REGION: Joi.string().optional(),
   AWS_S3_BUCKET: Joi.string().optional(),

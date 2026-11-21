@@ -13,25 +13,34 @@ export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createOrderDto: CreateOrderDto) {
-    const {
-      userId,
-      orderStatus,
-      paymentStatus,
-      paymentMethod,
-      notes,
-      items,
-      shipment,
-    } = createOrderDto;
+    const { userId, paymentMethod, notes, items, shipment } = createOrderDto;
 
     // Calculate totals
     let subtotal = 0;
     let totalTax = 0;
     let totalDiscount = 0;
 
+    const productIds = [...new Set(items.map((item) => item.productId))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, deletedAt: null },
+    });
+    const productById = new Map(
+      products.map((product) => [product.id, product]),
+    );
     const orderItemsData = items.map((item) => {
-      const itemSubtotal = item.price * item.quantity;
-      const itemDiscount = item.discount || 0;
-      const itemTax = item.tax || 0;
+      const product = productById.get(item.productId);
+      if (!product)
+        throw new BadRequestException(
+          `Product ${item.productId} is unavailable`,
+        );
+      if (product.availableStock < item.quantity)
+        throw new BadRequestException(`Insufficient stock for ${product.name}`);
+      const unitPrice = Number(product.basePrice);
+      const discountedSubtotal = Number(product.finalPrice) * item.quantity;
+      const itemSubtotal = unitPrice * item.quantity;
+      const itemDiscount = Math.max(0, itemSubtotal - discountedSubtotal);
+      const itemTax =
+        (discountedSubtotal * Number(product.taxPercentage)) / 100;
       const itemTotal = itemSubtotal - itemDiscount + itemTax;
 
       subtotal += itemSubtotal;
@@ -41,7 +50,7 @@ export class OrderService {
       return {
         productId: item.productId,
         quantity: item.quantity,
-        price: item.price,
+        price: unitPrice,
         discount: itemDiscount,
         tax: itemTax,
         total: itemTotal,
@@ -58,8 +67,8 @@ export class OrderService {
         data: {
           orderNumber,
           userId,
-          orderStatus,
-          paymentStatus,
+          orderStatus: 'PENDING',
+          paymentStatus: 'PENDING',
           paymentMethod,
           subtotal,
           discount: totalDiscount,
@@ -206,13 +215,8 @@ export class OrderService {
   }
 
   async update(id: string, updateOrderDto: UpdateOrderDto) {
-    const {
-      orderStatus,
-      paymentStatus,
-      trackingNumber,
-      courierName,
-      shipmentStatus,
-    } = updateOrderDto;
+    const { orderStatus, trackingNumber, courierName, shipmentStatus } =
+      updateOrderDto;
 
     const orderExists = await this.prisma.order.findUnique({
       where: { id },
@@ -229,7 +233,6 @@ export class OrderService {
         where: { id },
         data: {
           ...(orderStatus && { orderStatus }),
-          ...(paymentStatus && { paymentStatus }),
         },
       });
 

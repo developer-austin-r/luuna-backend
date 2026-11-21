@@ -93,7 +93,7 @@ export class CreateOrderDto {
   @IsEnum(PaymentStatus)
   paymentStatus: PaymentStatus;
 
-  @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.CREDIT_CARD })
+  @ApiProperty({ enum: PaymentMethod, example: PaymentMethod.RAZORPAY })
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
 
