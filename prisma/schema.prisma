@@ -874,16 +874,20 @@ model BillingInvoice {
 // ──────────────────────────────────────────────────────────────
 
 model Wishlist {
-  id        String   @id @default(uuid()) @map("id")
-  userId    String   @map("user_id")
-  productId String   @map("product_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id             String    @id @default(uuid()) @map("id")
+  userId         String?   @map("user_id")
+  guestTokenHash String?   @map("guest_token_hash")
+  expiresAt      DateTime? @map("expires_at")
+  productId      String    @map("product_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   // Prevent the same product being added twice by one user
   @@unique([userId, productId])
+  @@unique([guestTokenHash, productId])
+  @@index([expiresAt])
 
   @@index([userId])
   @@index([productId])

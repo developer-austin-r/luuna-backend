@@ -17,7 +17,7 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
-import { CartAuthGuard } from './cart-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { AddCartItemDto, SetCartQuantityDto } from './cart.dto';
 import { CART_COOKIE_AGE, type CartChange, CartService } from './cart.service';
 
@@ -25,7 +25,7 @@ type CartRequest = Request & { user?: JwtPayload };
 const cookieName = 'luuna_guest_cart';
 
 @ApiTags('Cart')
-@UseGuards(CartAuthGuard)
+@UseGuards(OptionalJwtAuthGuard)
 @Controller('cart')
 export class CartController {
   constructor(

@@ -279,6 +279,7 @@ export class PaymentService implements OnModuleInit, OnModuleDestroy {
     if (!payment || payment.status !== PaymentRecordStatus.FAILED) return;
     if (!payment.user.email) return;
     await this.email.sendPaymentFailureEmail(payment.user.email, {
+      orderId: payment.orderId,
       orderNumber: payment.order.orderNumber,
       paymentReference: payment.paymentReference,
     });
@@ -299,7 +300,9 @@ export class PaymentService implements OnModuleInit, OnModuleDestroy {
         ? 'failed'
         : 'initiated';
     await this.email.sendRefundUpdateEmail(refund.payment.user.email, {
+      orderId: refund.payment.orderId,
       orderNumber: refund.payment.order.orderNumber,
+      paymentReference: refund.payment.paymentReference,
       amount: Number(refund.amount).toFixed(2),
       currency: refund.payment.currency,
       status,
@@ -507,6 +510,8 @@ export class PaymentService implements OnModuleInit, OnModuleDestroy {
         ? await this.storage.generateDownloadUrl(invoicePath, 600)
         : undefined;
       await this.email.sendOrderConfirmationEmail(payment.order.user.email, {
+        orderId: payment.orderId,
+        cancelled: payment.order.orderStatus === 'CANCELLED',
         orderNumber: payment.order.orderNumber,
         paymentReference,
         amount: Number(payment.amount).toFixed(2),
@@ -1181,27 +1186,47 @@ export class PaymentService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async createGatewayOrder(paymentId: string) {
-    const payment = await this.prisma.payment.findUniqueOrThrow({
-      where: { id: paymentId },
-    });
-    const order = await this.gateway.createOrder({
-      amount: this.toMinorUnits(payment.amount),
-      currency: payment.currency,
-      receipt: payment.paymentReference,
-    });
-    if (
-      order.amount !== this.toMinorUnits(payment.amount) ||
-      order.currency !== payment.currency
-    ) {
-      throw new BadRequestException(
-        'Gateway order amount or currency mismatch',
-      );
-    }
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
-      data: { gatewayOrderId: order.id, status: PaymentRecordStatus.PENDING },
-    });
-    return this.checkoutResponse(updated);
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "payments" WHERE id = ${paymentId} FOR UPDATE`;
+        const payment = await tx.payment.findUniqueOrThrow({
+          where: { id: paymentId },
+          include: {
+            order: { select: { orderStatus: true, paymentStatus: true } },
+          },
+        });
+        if (
+          payment.order.orderStatus !== 'PENDING' ||
+          payment.order.paymentStatus !== 'PENDING' ||
+          !['CREATED', 'PENDING'].includes(payment.status)
+        ) {
+          throw new BadRequestException('Order is not eligible for payment.');
+        }
+        if (payment.gatewayOrderId) return this.checkoutResponse(payment);
+        const order = await this.gateway.createOrder({
+          amount: this.toMinorUnits(payment.amount),
+          currency: payment.currency,
+          receipt: payment.paymentReference,
+        });
+        if (
+          order.amount !== this.toMinorUnits(payment.amount) ||
+          order.currency !== payment.currency
+        ) {
+          throw new BadRequestException(
+            'Gateway order amount or currency mismatch',
+          );
+        }
+        const updated = await tx.payment.update({
+          where: { id: paymentId },
+          data: {
+            gatewayOrderId: order.id,
+            status: PaymentRecordStatus.PENDING,
+          },
+        });
+        return this.checkoutResponse(updated);
+      },
+      { timeout: 15_000 },
+    );
   }
 
   private checkoutResponse(payment: {
@@ -1473,7 +1498,12 @@ export class PaymentService implements OnModuleInit, OnModuleDestroy {
         });
         const order = await tx.order.findUniqueOrThrow({
           where: { id: payment.orderId },
-          select: { orderStatus: true },
+          select: {
+            orderStatus: true,
+            orderNumber: true,
+            orderedAt: true,
+            orderItems: { select: { productId: true, quantity: true } },
+          },
         });
         await tx.order.update({
           where: { id: payment.orderId },
@@ -1484,6 +1514,21 @@ export class PaymentService implements OnModuleInit, OnModuleDestroy {
               : {}),
           },
         });
+        if (
+          order.orderNumber === `WEB-${payment.orderId}` &&
+          order.orderStatus === 'PENDING'
+        ) {
+          await tx.cartItem.deleteMany({
+            where: {
+              cart: { userId: payment.userId },
+              updatedAt: { lte: order.orderedAt },
+              OR: order.orderItems.map(({ productId, quantity }) => ({
+                productId,
+                quantity,
+              })),
+            },
+          });
+        }
         await tx.paymentAuditLog.create({
           data: {
             paymentId,

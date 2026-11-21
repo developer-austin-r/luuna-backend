@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
-import { CartAuthGuard } from './cart-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CartController } from './cart.controller';
 import { CartService } from './cart.service';
 
 @Module({
   imports: [PrismaModule],
   controllers: [CartController],
-  providers: [CartAuthGuard, CartService],
+  providers: [OptionalJwtAuthGuard, CartService],
 })
 export class CartModule {}

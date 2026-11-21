@@ -3,102 +3,120 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiCookieAuth,
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ConfigService } from '@nestjs/config';
+import { ApiTags } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
+
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
-import { WishlistService } from './wishlist.service';
 import { AddWishlistDto } from './dto/add-wishlist.dto';
 import { GetWishlistQueryDto } from './dto/get-wishlist-query.dto';
+import {
+  type WishlistAction,
+  WishlistService,
+  WISHLIST_COOKIE_AGE,
+} from './wishlist.service';
+
+type WishlistRequest = Request & { user?: JwtPayload };
+const cookieName = 'luuna_guest_wishlist';
 
 @ApiTags('wishlist')
-@ApiBearerAuth()
-@ApiCookieAuth('access_token')
-@UseGuards(JwtAuthGuard)
+@UseGuards(OptionalJwtAuthGuard)
 @Controller('wishlist')
 export class WishlistController {
-  constructor(private readonly wishlistService: WishlistService) {}
+  constructor(
+    private readonly wishlist: WishlistService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Get()
-  @ApiOperation({
-    summary: 'Get user wishlist',
-    description: 'Returns paginated wishlist items for the authenticated user.',
-  })
-  @ApiOkResponse({ description: 'Wishlist items retrieved successfully.' })
-  @ApiUnauthorizedResponse({ description: 'Authentication required.' })
-  getUserWishlist(
-    @CurrentUser() user: JwtPayload,
+  list(
+    @Req() req: WishlistRequest,
+    @Res({ passthrough: true }) res: Response,
     @Query() query: GetWishlistQueryDto,
   ) {
-    return this.wishlistService.getUserWishlist(user.sub, query);
+    return this.handle(req, res, { kind: 'list', query });
   }
 
-  @Post()
-  @ApiOperation({
-    summary: 'Add product to wishlist',
-    description: 'Adds a product to the authenticated user wishlist.',
-  })
-  @ApiCreatedResponse({ description: 'Product added to wishlist.' })
-  @ApiUnauthorizedResponse({ description: 'Authentication required.' })
-  addToWishlist(@CurrentUser() user: JwtPayload, @Body() dto: AddWishlistDto) {
-    return this.wishlistService.addToWishlist(user.sub, dto.productId);
+  @Get('summary')
+  summary(
+    @Req() req: WishlistRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.handle(req, res, { kind: 'summary' });
   }
 
   @Get('check/:productId')
-  @ApiOperation({
-    summary: 'Check if product is in wishlist',
-    description: 'Returns whether a given product is in the user wishlist.',
-  })
-  @ApiOkResponse({ description: 'Wishlist status returned.' })
-  @ApiUnauthorizedResponse({ description: 'Authentication required.' })
-  checkWishlist(
-    @CurrentUser() user: JwtPayload,
+  check(
+    @Req() req: WishlistRequest,
+    @Res({ passthrough: true }) res: Response,
     @Param('productId', ParseUUIDPipe) productId: string,
   ) {
-    return this.wishlistService.checkWishlistStatus(user.sub, productId);
+    return this.handle(req, res, { kind: 'check', productId });
+  }
+
+  @Post()
+  add(
+    @Req() req: WishlistRequest,
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: AddWishlistDto,
+  ) {
+    return this.handle(req, res, { kind: 'add', productId: dto.productId });
   }
 
   @Delete(':productId')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Remove product from wishlist',
-    description:
-      'Removes a specific product from the authenticated user wishlist.',
-  })
-  @ApiOkResponse({ description: 'Product removed from wishlist.' })
-  @ApiUnauthorizedResponse({ description: 'Authentication required.' })
-  removeFromWishlist(
-    @CurrentUser() user: JwtPayload,
+  remove(
+    @Req() req: WishlistRequest,
+    @Res({ passthrough: true }) res: Response,
     @Param('productId', ParseUUIDPipe) productId: string,
   ) {
-    return this.wishlistService.removeFromWishlist(user.sub, productId);
+    return this.handle(req, res, { kind: 'remove', productId });
   }
 
   @Delete()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Clear user wishlist',
-    description: 'Removes all products from the authenticated user wishlist.',
-  })
-  @ApiOkResponse({ description: 'Wishlist cleared successfully.' })
-  @ApiUnauthorizedResponse({ description: 'Authentication required.' })
-  clearWishlist(@CurrentUser() user: JwtPayload) {
-    return this.wishlistService.clearWishlist(user.sub);
+  clear(
+    @Req() req: WishlistRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.handle(req, res, { kind: 'clear' });
+  }
+
+  private async handle(
+    req: WishlistRequest,
+    res: Response,
+    action: WishlistAction,
+  ) {
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    const rawToken = cookies?.[cookieName];
+    const token =
+      typeof rawToken === 'string' && /^[a-f0-9]{64}$/.test(rawToken)
+        ? rawToken
+        : undefined;
+    const result = await this.wishlist.access(action, req.user?.sub, token);
+    res.setHeader('Cache-Control', 'private, no-store');
+    const options = {
+      httpOnly: true,
+      secure:
+        req.secure || this.config.get<boolean>('auth.cookieSecure', false),
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+    if (result.cookie) {
+      res.cookie(cookieName, result.cookie, {
+        ...options,
+        maxAge: WISHLIST_COOKIE_AGE,
+      });
+    } else if (rawToken && (req.user || action.kind === 'clear')) {
+      res.clearCookie(cookieName, options);
+    }
+    return result.data;
   }
 }
