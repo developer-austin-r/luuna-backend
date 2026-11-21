@@ -101,10 +101,18 @@ export class ProductService {
     return this.storageService.generatePublicUrl(value);
   }
 
-  async findNewArrivals() {
+  findNewArrivals() {
+    return this.findLandingProducts('desc');
+  }
+
+  findAccessories() {
+    return this.findLandingProducts('asc');
+  }
+
+  private async findLandingProducts(sortOrder: Prisma.SortOrder) {
     const products = await this.prisma.product.findMany({
       where: { deletedAt: null, status: { slug: 'active' } },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ createdAt: sortOrder }, { id: sortOrder }],
       take: 6,
       select: {
         id: true,

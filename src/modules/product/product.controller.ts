@@ -26,6 +26,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  type ApiResponseSchemaHost,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ProductService } from './product.service';
@@ -49,6 +50,41 @@ type UploadedImage = {
   buffer: Buffer;
   mimetype: string;
   originalname?: string;
+};
+
+const landingProductsSchema: ApiResponseSchemaHost['schema'] = {
+  type: 'object',
+  required: ['statusCode', 'timestamp', 'path', 'data'],
+  properties: {
+    statusCode: { type: 'integer', example: 200 },
+    timestamp: { type: 'string', format: 'date-time' },
+    path: { type: 'string' },
+    data: {
+      type: 'array',
+      maxItems: 6,
+      items: {
+        type: 'object',
+        required: [
+          'id',
+          'name',
+          'shortDescription',
+          'basePrice',
+          'finalPrice',
+          'createdAt',
+          'imageUrl',
+        ],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          name: { type: 'string' },
+          shortDescription: { type: 'string', nullable: true },
+          basePrice: { type: 'number', example: 3500 },
+          finalPrice: { type: 'number', example: 2500 },
+          createdAt: { type: 'string', format: 'date-time' },
+          imageUrl: { type: 'string', format: 'uri', nullable: true },
+        },
+      },
+    },
+  },
 };
 
 @ApiTags('Products')
@@ -92,43 +128,25 @@ export class ProductController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'New arrivals fetched successfully.',
-    schema: {
-      type: 'object',
-      required: ['statusCode', 'timestamp', 'path', 'data'],
-      properties: {
-        statusCode: { type: 'integer', example: 200 },
-        timestamp: { type: 'string', format: 'date-time' },
-        path: { type: 'string', example: '/products/new-arrivals' },
-        data: {
-          type: 'array',
-          maxItems: 6,
-          items: {
-            type: 'object',
-            required: [
-              'id',
-              'name',
-              'shortDescription',
-              'basePrice',
-              'finalPrice',
-              'createdAt',
-              'imageUrl',
-            ],
-            properties: {
-              id: { type: 'string', format: 'uuid' },
-              name: { type: 'string' },
-              shortDescription: { type: 'string', nullable: true },
-              basePrice: { type: 'number', example: 3500 },
-              finalPrice: { type: 'number', example: 2500 },
-              createdAt: { type: 'string', format: 'date-time' },
-              imageUrl: { type: 'string', format: 'uri', nullable: true },
-            },
-          },
-        },
-      },
-    },
+    schema: landingProductsSchema,
   })
   getNewArrivals() {
     return this.productService.findNewArrivals();
+  }
+
+  @Get('accessories')
+  @ApiOperation({
+    summary: 'Get products for the landing page Accessories section',
+    description:
+      'Returns up to six active, non-deleted catalog products ordered by creation date, oldest first.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Accessories section products fetched successfully.',
+    schema: landingProductsSchema,
+  })
+  getAccessories() {
+    return this.productService.findAccessories();
   }
 
   @Get('categories/all')

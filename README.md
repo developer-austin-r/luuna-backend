@@ -102,6 +102,11 @@ The API runs at:
 
 - API: `http://localhost:3000`
 - Swagger docs: `http://localhost:3000/api/docs`
+
+Under **Products** in Swagger, `GET /products/accessories` serves the landing
+page Accessories carousel. It returns up to six active, non-deleted catalog
+products, oldest first by creation date, with their name, short description,
+prices, and primary image URL when available.
 - Health check: `http://localhost:3000/health`
 
 ## Docker Setup
