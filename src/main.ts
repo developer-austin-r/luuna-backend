@@ -25,7 +25,20 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance() as Application;
   expressApp.set('trust proxy', true);
 
-  app.use(json({ limit: '50mb' }));
+  app.use(
+    json({
+      limit: '50mb',
+      verify: (req, _res, buffer) => {
+        const rawRequest = req as typeof req & {
+          rawBody?: Buffer;
+          url?: string;
+        };
+        if (rawRequest.url?.startsWith('/webhooks/razorpay')) {
+          rawRequest.rawBody = Buffer.from(buffer);
+        }
+      },
+    }),
+  );
   app.use(urlencoded({ limit: '50mb', extended: true }));
   app.use(cookieParser());
 

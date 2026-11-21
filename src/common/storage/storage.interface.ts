@@ -37,6 +37,9 @@ export interface IStorageService {
    */
   generatePublicUrl(key: string): string;
 
+  /** Create a short-lived authenticated URL for private files. */
+  generateDownloadUrl(key: string, expiresInSeconds?: number): Promise<string>;
+
   /**
    * Extract the S3 object key from a full URL.
    * If the input is already a key (not a URL), returns it unchanged.

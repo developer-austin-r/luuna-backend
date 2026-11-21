@@ -27,6 +27,21 @@ export default () => ({
       process.env.AWS_SES_SECRET_ACCESS_KEY ||
       process.env.AWS_SECRET_ACCESS_KEY,
   },
+  payments: {
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
+    razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+    currency: process.env.PAYMENT_CURRENCY || 'INR',
+    enabled: process.env.PAYMENTS_ENABLED === 'true',
+    emailNotificationsEnabled:
+      process.env.EMAIL_PAYMENT_NOTIFICATIONS_ENABLED === 'true',
+    expirationMinutes: Number(process.env.PAYMENT_EXPIRATION_MINUTES || 30),
+    reconciliationEnabled:
+      process.env.PAYMENT_RECONCILIATION_ENABLED !== 'false',
+    reconciliationIntervalMinutes: Number(
+      process.env.PAYMENT_RECONCILIATION_INTERVAL_MINUTES || 60,
+    ),
+  },
   auth: {
     jwtSecret: process.env.JWT_SECRET || 'changeme-jwt-secret',
     jwtRefreshSecret:

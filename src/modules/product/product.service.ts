@@ -374,7 +374,7 @@ export class ProductService {
    */
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       include: {
         brand: true,
         status: true,
@@ -392,11 +392,24 @@ export class ProductService {
       },
     });
 
-    if (!product || product.deletedAt !== null) {
+    if (!product) {
       throw new NotFoundException(`Product with ID "${id}" not found`);
     }
 
     return this.serializeBigInt(this.resolveProductMedia(product));
+  }
+
+  async findIdBySlug(slug: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { slug, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return product;
   }
 
   /**

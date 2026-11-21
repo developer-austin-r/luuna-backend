@@ -11,7 +11,9 @@ import {
   DeleteObjectsCommand,
   HeadObjectCommand,
   NotFound,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { IStorageService, UploadFileParams } from './storage.interface';
 
 /** Maps common file extensions to their MIME types. */
@@ -202,6 +204,14 @@ export class AwsS3Service implements IStorageService {
    */
   generatePublicUrl(key: string): string {
     return `${this.baseUrl}/${key}`;
+  }
+
+  generateDownloadUrl(key: string, expiresInSeconds = 600): Promise<string> {
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      { expiresIn: Math.min(Math.max(expiresInSeconds, 60), 3600) },
+    );
   }
 
   /**
