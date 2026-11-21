@@ -1559,10 +1559,22 @@ export class ProductService {
   }
 
   async findByCategorySlug(slug: string, query: CategoryProductQueryDto) {
-    const category = await this.prisma.category.findFirst({
-      where: { slug, isDeleted: false, status: true },
-      select: { id: true, name: true, slug: true, image: true },
+    const visibleCategory = { isDeleted: false, status: true };
+    const select = { id: true, name: true, slug: true, image: true } as const;
+    let category = await this.prisma.category.findFirst({
+      where: { ...visibleCategory, slug },
+      select,
     });
+    if (!category) {
+      // A renamed category can retain its original slug in admin.
+      const names = [slug, slug.replace(/-/g, ' ')];
+      const matches = await this.prisma.category.findMany({
+        where: { ...visibleCategory, name: { in: names, mode: 'insensitive' } },
+        select,
+        take: 2,
+      });
+      if (matches.length === 1) category = matches[0];
+    }
     if (!category) throw new NotFoundException('Category not found');
 
     const { data, meta } = await this.findAll(
