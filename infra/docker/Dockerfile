@@ -43,6 +43,8 @@ COPY --from=builder /app/dist ./dist
 # Copy Prisma files for runtime
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+# Keep the ts-node settings used by the Prisma seed command.
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Create app user for security
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -s /sbin/nologin nestjs
