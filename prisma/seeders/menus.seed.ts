@@ -173,7 +173,9 @@ export async function seedMenus(prisma: PrismaClient): Promise<void> {
       },
       create: menu,
     });
-    console.log(`  Upserted Menu: ${result.name} (sortOrder: ${result.sortOrder})`);
+    console.log(
+      `  Upserted Menu: ${result.name} (sortOrder: ${result.sortOrder})`,
+    );
   }
 
   // Insert child menus after parents exist

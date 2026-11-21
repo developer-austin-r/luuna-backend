@@ -26,6 +26,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  type ApiResponseSchemaHost,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ProductService } from './product.service';
@@ -33,6 +34,7 @@ import { BarcodeService } from './barcode.service';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
+  CategoryProductQueryDto,
   CreateProductDto,
   CreateProductImageDto,
   CreateProductKeywordDto,
@@ -49,6 +51,41 @@ type UploadedImage = {
   buffer: Buffer;
   mimetype: string;
   originalname?: string;
+};
+
+const landingProductsSchema: ApiResponseSchemaHost['schema'] = {
+  type: 'object',
+  required: ['statusCode', 'timestamp', 'path', 'data'],
+  properties: {
+    statusCode: { type: 'integer', example: 200 },
+    timestamp: { type: 'string', format: 'date-time' },
+    path: { type: 'string' },
+    data: {
+      type: 'array',
+      maxItems: 6,
+      items: {
+        type: 'object',
+        required: [
+          'id',
+          'name',
+          'shortDescription',
+          'basePrice',
+          'finalPrice',
+          'createdAt',
+          'imageUrl',
+        ],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          name: { type: 'string' },
+          shortDescription: { type: 'string', nullable: true },
+          basePrice: { type: 'number', example: 3500 },
+          finalPrice: { type: 'number', example: 2500 },
+          createdAt: { type: 'string', format: 'date-time' },
+          imageUrl: { type: 'string', format: 'uri', nullable: true },
+        },
+      },
+    },
+  },
 };
 
 @ApiTags('Products')
@@ -83,6 +120,36 @@ export class ProductController {
     return result;
   }
 
+  @Get('new-arrivals')
+  @ApiOperation({
+    summary: 'Get products for the landing page New Arrivals section',
+    description:
+      'Returns up to six active, non-deleted products ordered by creation date, newest first.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'New arrivals fetched successfully.',
+    schema: landingProductsSchema,
+  })
+  getNewArrivals() {
+    return this.productService.findNewArrivals();
+  }
+
+  @Get('accessories')
+  @ApiOperation({
+    summary: 'Get products for the landing page Accessories section',
+    description:
+      'Returns up to six active, non-deleted products in the Keychain category, oldest first by creation date. Returns an empty list when no products qualify.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Accessories section products fetched successfully.',
+    schema: landingProductsSchema,
+  })
+  getAccessories() {
+    return this.productService.findAccessories();
+  }
+
   @Get('categories/all')
   @ApiOperation({
     summary: 'Get all active categories for product assignments',
@@ -93,6 +160,24 @@ export class ProductController {
   })
   async getCategories() {
     return this.productService.getCategories();
+  }
+
+  @Get('categories/:slug/products')
+  @ApiOperation({ summary: 'List active storefront products for a category' })
+  @ApiParam({ name: 'slug', example: 'marvel' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Category and paginated products.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Category not found.',
+  })
+  getCategoryProducts(
+    @Param('slug') slug: string,
+    @Query() query: CategoryProductQueryDto,
+  ) {
+    return this.productService.findByCategorySlug(slug, query);
   }
 
   @Get('lookup')
@@ -243,6 +328,12 @@ export class ProductController {
   })
   async getMonthlyStockReport() {
     return this.productService.getMonthlyStockReport();
+  }
+
+  @Get('by-slug/:slug')
+  @ApiOperation({ summary: 'Resolve a product slug to its ID' })
+  findIdBySlug(@Param('slug') slug: string) {
+    return this.productService.findIdBySlug(slug);
   }
 
   @Get(':id')

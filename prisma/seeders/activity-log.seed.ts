@@ -9,15 +9,16 @@ const MODULES_AND_ACTIONS = [
       { name: 'logout', description: 'User logout' },
       { name: 'login_failed', description: 'Failed login attempt' },
       { name: 'signup_started', description: 'Signup process initiated' },
-      { name: 'signup_completed', description: 'Signup completed and verified' },
+      {
+        name: 'signup_completed',
+        description: 'Signup completed and verified',
+      },
     ],
   },
   {
     module: 'product',
     description: 'Product catalog views',
-    actions: [
-      { name: 'product_viewed', description: 'Product page viewed' },
-    ],
+    actions: [{ name: 'product_viewed', description: 'Product page viewed' }],
   },
   {
     module: 'search',
@@ -32,7 +33,10 @@ const MODULES_AND_ACTIONS = [
     actions: [
       { name: 'order_created', description: 'New order created' },
       { name: 'order_viewed', description: 'Order details viewed' },
-      { name: 'order_cancelled', description: 'Order cancelled by user or admin' },
+      {
+        name: 'order_cancelled',
+        description: 'Order cancelled by user or admin',
+      },
       { name: 'order_status_changed', description: 'Order status updated' },
     ],
   },
@@ -49,13 +53,21 @@ const MODULES_AND_ACTIONS = [
     description: 'Password and credential updates',
     actions: [
       { name: 'password_changed', description: 'User password changed' },
-      { name: 'forgot_password_requested', description: 'Password reset email requested' },
-      { name: 'password_reset_completed', description: 'Password reset completed via token' },
+      {
+        name: 'forgot_password_requested',
+        description: 'Password reset email requested',
+      },
+      {
+        name: 'password_reset_completed',
+        description: 'Password reset completed via token',
+      },
     ],
   },
 ];
 
-export async function seedModulesAndActions(prisma: PrismaClient): Promise<void> {
+export async function seedModulesAndActions(
+  prisma: PrismaClient,
+): Promise<void> {
   console.log('Seeding Modules & Actions for Activity Log...');
 
   for (const m of MODULES_AND_ACTIONS) {

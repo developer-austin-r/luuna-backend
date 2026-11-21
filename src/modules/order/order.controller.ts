@@ -2,7 +2,9 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -18,12 +20,15 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateOrderDto, UpdateOrderDto } from './dto';
+import { CreateCheckoutOrderDto } from './dto/create-checkout-order.dto';
 import { OrderService } from './order.service';
 import type { Request } from 'express';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -34,12 +39,10 @@ export class OrderController {
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @ApiCreatedResponse({ description: 'Order created successfully.' })
   async create(@Body() createOrderDto: CreateOrderDto, @Req() req: Request) {
-    // Obtain secure user_id from token context if authenticated
-    if (req.user?.sub) {
-      createOrderDto.userId = (req.user as { sub: string }).sub;
-    }
+    createOrderDto.userId = (req.user as JwtPayload).sub;
     const order = await this.orderService.create(createOrderDto);
 
     if (order) {
@@ -61,6 +64,15 @@ export class OrderController {
     }
 
     return order;
+  }
+
+  @Post('checkout')
+  @UseGuards(JwtAuthGuard)
+  createCheckout(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateCheckoutOrderDto,
+  ) {
+    return this.orderService.createCheckout(user.sub, dto);
   }
 
   // ========================================
@@ -89,15 +101,35 @@ export class OrderController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
   @ApiOkResponse({ description: 'Returns all orders.' })
   findAll() {
     return this.orderService.findAll();
   }
 
+  @Get(':id/confirmation')
+  @UseGuards(JwtAuthGuard)
+  @Header('Cache-Control', 'private, no-store')
+  getConfirmation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.orderService.getConfirmation(id, user.sub);
+  }
+
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ description: 'Returns an order by ID.' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
     const order = await this.orderService.findOne(id);
+    if (order.userId !== user.sub && user.role !== 'Admin') {
+      throw new ForbiddenException('Order does not belong to this user');
+    }
     await this.activityLogService.log({
       userId: req.user?.sub,
       sessionId: req['sessionId'],
@@ -138,6 +170,8 @@ export class OrderController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
   @ApiOkResponse({ description: 'Order updated successfully.' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -165,6 +199,8 @@ export class OrderController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
   @ApiOkResponse({ description: 'Order deleted successfully.' })
   async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const order = await this.orderService.findOne(id);

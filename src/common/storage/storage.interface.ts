@@ -32,10 +32,18 @@ export interface IStorageService {
   fileExists(key: string): Promise<boolean>;
 
   /**
+   * List object keys matching a prefix.
+   */
+  listFiles(prefix: string): Promise<string[]>;
+
+  /**
    * Convert a stored object key into a fully-qualified public URL.
    * e.g. products/uuid/image.jpg → https://bucket.s3.region.amazonaws.com/products/uuid/image.jpg
    */
   generatePublicUrl(key: string): string;
+
+  /** Create a short-lived authenticated URL for private files. */
+  generateDownloadUrl(key: string, expiresInSeconds?: number): Promise<string>;
 
   /**
    * Extract the S3 object key from a full URL.

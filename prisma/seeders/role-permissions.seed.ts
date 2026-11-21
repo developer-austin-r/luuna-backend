@@ -77,9 +77,7 @@ const ROLE_PERMISSIONS: { roleId: string; permissionId: string }[] = [
   { roleId: BILLING_USER_ROLE_ID, permissionId: PERM.BARCODE_GENERATE },
 ];
 
-export async function seedRolePermissions(
-  prisma: PrismaClient,
-): Promise<void> {
+export async function seedRolePermissions(prisma: PrismaClient): Promise<void> {
   for (const rp of ROLE_PERMISSIONS) {
     await prisma.rolePermission.upsert({
       where: {
@@ -95,7 +93,5 @@ export async function seedRolePermissions(
       },
     });
   }
-  console.log(
-    `  Seeded ${ROLE_PERMISSIONS.length} role-permission mappings`,
-  );
+  console.log(`  Seeded ${ROLE_PERMISSIONS.length} role-permission mappings`);
 }

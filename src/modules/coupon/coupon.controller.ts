@@ -7,8 +7,15 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CreateCouponDto, UpdateCouponDto } from './dto';
 import { CouponService } from './coupon.service';
 
@@ -27,6 +34,42 @@ export class CouponController {
   @ApiOkResponse({ description: 'Returns all coupons.' })
   findAll() {
     return this.couponService.findAll();
+  }
+
+  @Get('validate/:code')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Validate coupon activation and expiration',
+    description:
+      'Checks if a coupon is active, within valid date range, and ready for use. Rate limited to 10 requests per minute.',
+  })
+  @ApiOkResponse({ description: 'Sanitized coupon validation summary.' })
+  validate(
+    @Param('code') code: string,
+    @Query('orderAmount') orderAmount?: string,
+    @Query('mode') mode?: 'checkout' | 'lookup',
+  ) {
+    const parsedAmount =
+      orderAmount !== undefined ? parseFloat(orderAmount) : undefined;
+    return this.couponService.validate({
+      code,
+      orderAmount: parsedAmount,
+      mode,
+    });
+  }
+
+  @Post('redeem/:code')
+  @ApiOperation({
+    summary: 'Atomically redeem a coupon',
+    description:
+      'Atomically claims a coupon redemption during checkout ensuring limits cannot be exceeded.',
+  })
+  @ApiOkResponse({ description: 'Coupon redeemed successfully.' })
+  redeem(
+    @Param('code') code: string,
+    @Body('orderAmount') orderAmount: number,
+  ) {
+    return this.couponService.redeemCoupon(code, orderAmount);
   }
 
   @Get(':id')

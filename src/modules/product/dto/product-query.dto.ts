@@ -9,7 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, PickType } from '@nestjs/swagger';
 
 export enum SortOrder {
   ASC = 'asc',
@@ -93,3 +93,11 @@ export class ProductQueryDto {
   @IsEnum(SortOrder)
   sortOrder?: SortOrder = SortOrder.DESC;
 }
+
+export class CategoryProductQueryDto extends PickType(ProductQueryDto, [
+  'page',
+  'minPrice',
+  'maxPrice',
+  'sortBy',
+  'sortOrder',
+] as const) {}

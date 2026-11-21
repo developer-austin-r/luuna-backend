@@ -7,6 +7,14 @@ import {
   getForgotPasswordTemplate,
   getPasswordChangedTemplate,
 } from './email.template';
+import {
+  type OrderConfirmationDetails,
+  type PaymentEmailContent,
+  type RefundEmailDetails,
+  renderOrderConfirmation,
+  renderPaymentFailure,
+  renderRefundUpdate,
+} from './payment-email.template';
 
 @Injectable()
 export class EmailService {
@@ -67,6 +75,84 @@ export class EmailService {
         (error as Error).stack,
       );
     }
+  }
+
+  private async sendPaymentEmail(
+    to: string,
+    { subject, html, text }: PaymentEmailContent,
+  ) {
+    if (process.env.NODE_ENV === 'test') return;
+    const command = new SendEmailCommand({
+      Destination: { ToAddresses: [to] },
+      Message: {
+        Body: {
+          Html: { Charset: 'UTF-8', Data: html },
+          Text: { Charset: 'UTF-8', Data: text },
+        },
+        Subject: { Charset: 'UTF-8', Data: subject },
+      },
+      Source: this.senderEmail,
+    });
+    const response = await this.sesClient.send(command);
+    this.logger.log(
+      `Transactional email sent, MessageId: ${response.MessageId}`,
+    );
+  }
+
+  private orderUrl(orderId: string) {
+    const base = this.configService.get<string>('auth.frontendUrl');
+    if (!base) return undefined;
+    try {
+      return new URL(`/order-confirmation/${encodeURIComponent(orderId)}`, base)
+        .href;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async sendOrderConfirmationEmail(
+    to: string,
+    {
+      orderId,
+      ...details
+    }: Omit<OrderConfirmationDetails, 'orderUrl'> & { orderId: string },
+  ) {
+    await this.sendPaymentEmail(
+      to,
+      renderOrderConfirmation({
+        ...details,
+        orderUrl: this.orderUrl(orderId),
+      }),
+    );
+  }
+
+  async sendPaymentFailureEmail(
+    to: string,
+    details: { orderId: string; orderNumber: string; paymentReference: string },
+  ) {
+    await this.sendPaymentEmail(
+      to,
+      renderPaymentFailure({
+        ...details,
+        orderUrl: this.orderUrl(details.orderId),
+      }),
+    );
+  }
+
+  async sendRefundUpdateEmail(
+    to: string,
+    {
+      orderId,
+      ...details
+    }: Omit<RefundEmailDetails, 'orderUrl'> & { orderId: string },
+  ) {
+    await this.sendPaymentEmail(
+      to,
+      renderRefundUpdate({
+        ...details,
+        orderUrl: this.orderUrl(orderId),
+      }),
+    );
   }
 
   async sendWelcomeEmail(to: string, name: string) {

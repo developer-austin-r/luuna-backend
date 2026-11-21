@@ -4,8 +4,10 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 
 type ExceptionResponse = {
@@ -14,6 +16,8 @@ type ExceptionResponse = {
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -22,6 +26,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    const missingTable =
+      exception instanceof Prisma.PrismaClientKnownRequestError &&
+      exception.code === 'P2021';
+    if (missingTable) {
+      this.logger.error(
+        'Database schema is missing a required table',
+        exception.stack,
+      );
+    }
+
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException
       ? exception.getStatus()
@@ -29,7 +43,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const exceptionResponse = isHttpException
       ? exception.getResponse()
-      : exception instanceof Error
+      : exception instanceof Error && !missingTable
         ? exception.message
         : 'Internal server error';
 

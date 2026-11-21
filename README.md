@@ -102,6 +102,12 @@ The API runs at:
 
 - API: `http://localhost:3000`
 - Swagger docs: `http://localhost:3000/api/docs`
+
+Under **Products** in Swagger, `GET /products/accessories` serves the landing
+page Accessories carousel. It returns up to six active, non-deleted Keychain
+products, oldest first by creation date, with their name, short description,
+prices, and primary image URL when available. The landing page hides the
+carousel when the API returns an empty list.
 - Health check: `http://localhost:3000/health`
 
 ## Docker Setup
@@ -177,4 +183,5 @@ prisma/
 
 - Prefer `DB_*` variables over hand-written `DATABASE_URL` values.
 - `DATABASE_URL` and `SHADOW_DATABASE_URL` are generated internally from `DB_*` values.
+- Razorpay analysis and operations are documented in [the system analysis](docs/razorpay-payment-analysis.md) and [payment operations guide](docs/razorpay-operations.md).
 - Use PostgreSQL `16` locally to match Docker and CI.

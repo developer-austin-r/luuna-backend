@@ -17,6 +17,7 @@ import { compare, hash } from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { TokenService } from '../token/token.service';
+import { StorageService } from '../../common/storage/storage.service';
 
 import { Prisma, TokenType } from '@prisma/client';
 
@@ -27,6 +28,7 @@ export class UserService {
     private readonly emailService: EmailService,
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
   ) {}
 
   // ========================================
@@ -344,6 +346,93 @@ export class UserService {
   }
 
   // ========================================
+  // GET AVAILABLE PROFILE IMAGES FROM S3
+  // ========================================
+
+  async getAvailableProfileImages() {
+    const prefix = 'assets/Profile-img/';
+    let keys: string[] = [];
+
+    try {
+      keys = await this.storageService.listFiles(prefix);
+    } catch {
+      // Fallback to default known profile assets if S3 is unreachable
+      keys = [
+        'assets/Profile-img/Profile-1.jpg',
+        'assets/Profile-img/Profile-2.jpg',
+        'assets/Profile-img/Profile-3.jpg',
+      ];
+    }
+
+    if (!keys || keys.length === 0) {
+      keys = [
+        'assets/Profile-img/Profile-1.jpg',
+        'assets/Profile-img/Profile-2.jpg',
+        'assets/Profile-img/Profile-3.jpg',
+      ];
+    }
+
+    // Filter to valid images
+    const imageKeys = keys.filter((k) => /\.(jpg|jpeg|png|webp|svg)$/i.test(k));
+
+    // Natural sort: Profile-1 before Profile-2 etc.
+    imageKeys.sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }),
+    );
+
+    return imageKeys.map((key) => {
+      const filename = key.split('/').pop() ?? key;
+      const cleanName = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      const name = cleanName
+        .split(' ')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+
+      return {
+        key,
+        name,
+        url: this.storageService.generatePublicUrl(key),
+      };
+    });
+  }
+
+  // ========================================
+  // UPDATE PROFILE IMAGE (S3 RELATIVE PATH ONLY)
+  // ========================================
+
+  async updateProfileImage(userId: string, imagePath: string) {
+    if (!imagePath || typeof imagePath !== 'string') {
+      throw new BadRequestException('Image path is required');
+    }
+
+    const relativeKey = this.storageService.extractObjectKey(imagePath.trim());
+
+    if (
+      !relativeKey ||
+      (!relativeKey.startsWith('assets/Profile-img/') &&
+        !/\.(jpg|jpeg|png|webp|svg)$/i.test(relativeKey))
+    ) {
+      throw new BadRequestException('Invalid profile image path');
+    }
+
+    const profile = await this.prisma.userProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        profileImageUrl: relativeKey,
+      },
+      update: {
+        profileImageUrl: relativeKey,
+      },
+    });
+
+    return {
+      profileImageUrl: profile.profileImageUrl,
+      message: 'Profile image updated successfully',
+    };
+  }
+
+  // ========================================
   // UPDATE PROFILE (TRANSACTIONAL)
   // ========================================
 
@@ -360,6 +449,13 @@ export class UserService {
       pincode,
       profileImageUrl,
     } = updateProfileDto;
+
+    const relativeProfileImageUrl =
+      profileImageUrl !== undefined
+        ? profileImageUrl
+          ? this.storageService.extractObjectKey(profileImageUrl.trim())
+          : null
+        : undefined;
 
     let dobDate: Date | null | undefined = undefined;
     if (dateOfBirth !== undefined) {
@@ -398,7 +494,7 @@ export class UserService {
           district: district ?? null,
           state: state ?? null,
           pincode: pincode ?? null,
-          profileImageUrl: profileImageUrl ?? null,
+          profileImageUrl: relativeProfileImageUrl ?? null,
         },
         update: {
           ...(mobileNumber !== undefined && {
@@ -422,8 +518,8 @@ export class UserService {
           ...(pincode !== undefined && {
             pincode: pincode || null,
           }),
-          ...(profileImageUrl !== undefined && {
-            profileImageUrl: profileImageUrl || null,
+          ...(relativeProfileImageUrl !== undefined && {
+            profileImageUrl: relativeProfileImageUrl,
           }),
         },
       });
