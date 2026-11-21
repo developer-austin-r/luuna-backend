@@ -20,6 +20,7 @@ const productSelect = {
   id: true,
   name: true,
   finalPrice: true,
+  taxPercentage: true,
   availableStock: true,
   deletedAt: true,
   status: { select: { slug: true } },
@@ -134,6 +135,12 @@ export class CartService {
               id: product.id,
               name: product.name,
               price: Number(product.finalPrice),
+              tax: product.finalPrice
+                .mul(quantity)
+                .mul(product.taxPercentage)
+                .div(100)
+                .toDecimalPlaces(2)
+                .toNumber(),
               quantity,
               image: imagePath
                 ? /^https?:\/\//i.test(imagePath)
