@@ -83,6 +83,54 @@ export class ProductController {
     return result;
   }
 
+  @Get('new-arrivals')
+  @ApiOperation({
+    summary: 'Get products for the landing page New Arrivals section',
+    description:
+      'Returns up to six active, non-deleted products ordered by creation date, newest first.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'New arrivals fetched successfully.',
+    schema: {
+      type: 'object',
+      required: ['statusCode', 'timestamp', 'path', 'data'],
+      properties: {
+        statusCode: { type: 'integer', example: 200 },
+        timestamp: { type: 'string', format: 'date-time' },
+        path: { type: 'string', example: '/products/new-arrivals' },
+        data: {
+          type: 'array',
+          maxItems: 6,
+          items: {
+            type: 'object',
+            required: [
+              'id',
+              'name',
+              'shortDescription',
+              'basePrice',
+              'finalPrice',
+              'createdAt',
+              'imageUrl',
+            ],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              name: { type: 'string' },
+              shortDescription: { type: 'string', nullable: true },
+              basePrice: { type: 'number', example: 3500 },
+              finalPrice: { type: 'number', example: 2500 },
+              createdAt: { type: 'string', format: 'date-time' },
+              imageUrl: { type: 'string', format: 'uri', nullable: true },
+            },
+          },
+        },
+      },
+    },
+  })
+  getNewArrivals() {
+    return this.productService.findNewArrivals();
+  }
+
   @Get('categories/all')
   @ApiOperation({
     summary: 'Get all active categories for product assignments',

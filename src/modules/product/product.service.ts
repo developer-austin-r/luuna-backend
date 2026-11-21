@@ -101,6 +101,49 @@ export class ProductService {
     return this.storageService.generatePublicUrl(value);
   }
 
+  async findNewArrivals() {
+    const products = await this.prisma.product.findMany({
+      where: { deletedAt: null, status: { slug: 'active' } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 6,
+      select: {
+        id: true,
+        name: true,
+        shortDescription: true,
+        basePrice: true,
+        finalPrice: true,
+        createdAt: true,
+        images: {
+          where: {
+            OR: [
+              { displayUrl: { not: '' } },
+              { originalUrl: { not: '' } },
+              { AND: [{ imageUrl: { not: null } }, { imageUrl: { not: '' } }] },
+            ],
+          },
+          orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
+          take: 1,
+          select: { displayUrl: true, imageUrl: true, originalUrl: true },
+        },
+      },
+    });
+
+    return products.map(
+      ({ images: [image], basePrice, finalPrice, ...product }) => {
+        const imageUrl =
+          image?.displayUrl || image?.imageUrl || image?.originalUrl;
+        return {
+          ...product,
+          basePrice: basePrice.toNumber(),
+          finalPrice: finalPrice.toNumber(),
+          imageUrl: imageUrl?.startsWith('data:image/')
+            ? imageUrl
+            : this.resolveUrl(imageUrl),
+        };
+      },
+    );
+  }
+
   /**
    * Helper to detect and upload base64 file payloads to S3, returning the plain full S3 URL.
    * If value is not base64, returns it as-is.
