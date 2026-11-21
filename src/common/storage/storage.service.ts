@@ -28,6 +28,10 @@ export class StorageService implements IStorageService {
     return this.s3.fileExists(key);
   }
 
+  listFiles(prefix: string): Promise<string[]> {
+    return this.s3.listFiles(prefix);
+  }
+
   generatePublicUrl(key: string): string {
     return this.s3.generatePublicUrl(key);
   }
