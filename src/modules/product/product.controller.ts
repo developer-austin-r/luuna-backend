@@ -336,6 +336,22 @@ export class ProductController {
     return this.productService.findIdBySlug(slug);
   }
 
+  @Get(':id/related')
+  @ApiOperation({
+    summary: 'Get related products for a product based on its category',
+    description:
+      'Returns up to six active, non-deleted products in the same categories, excluding the current product.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Related products fetched successfully.',
+    schema: landingProductsSchema,
+  })
+  getRelatedProducts(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productService.findRelatedProducts(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get product details by ID' })
   @ApiParam({ name: 'id', description: 'Product UUID' })
