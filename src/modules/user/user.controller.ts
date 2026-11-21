@@ -30,6 +30,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { GetUsersQueryDto } from './dto/get-users-query.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { SelectProfileImageDto } from './dto/select-profile-image.dto';
 
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -127,6 +128,69 @@ export class UserController {
       userAgent: req.headers['user-agent'],
       metadata: {
         updated_fields: Object.keys(updateProfileDto),
+      },
+    });
+
+    return result;
+  }
+
+  // ========================================
+  // GET AVAILABLE PROFILE IMAGES FROM S3
+  // ========================================
+
+  @Get('profile/images')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Get available profile images',
+    description:
+      'Fetches the list of available profile images from the S3 assets/Profile-img/ folder.',
+  })
+  @ApiOkResponse({
+    description: 'Returns list of available profile image keys and URLs.',
+  })
+  async getAvailableProfileImages() {
+    return this.userService.getAvailableProfileImages();
+  }
+
+  // ========================================
+  // SELECT / UPDATE PROFILE IMAGE
+  // ========================================
+
+  @Patch('profile/image')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Select and save profile image',
+    description:
+      'Saves the relative S3 path for the selected profile image to the authenticated user record.',
+  })
+  @ApiOkResponse({
+    description: 'Profile image updated successfully.',
+  })
+  async updateProfileImage(
+    @CurrentUser() user: JwtPayload,
+    @Body() selectProfileImageDto: SelectProfileImageDto,
+    @Req() req: Request,
+  ) {
+    const result = await this.userService.updateProfileImage(
+      user.sub,
+      selectProfileImageDto.imagePath,
+    );
+
+    await this.activityLogService.log({
+      userId: user.sub,
+      sessionId: req['sessionId'],
+      moduleName: 'profile',
+      actionName: 'profile_image_updated',
+      entityId: user.sub,
+      description: 'Selected new profile image',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: {
+        selected_path: result.profileImageUrl,
       },
     });
 

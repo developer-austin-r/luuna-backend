@@ -10,6 +10,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   NotFound,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
@@ -199,11 +200,41 @@ export class AwsS3Service implements IStorageService {
   }
 
   /**
+   * List object keys matching a prefix from S3.
+   */
+  async listFiles(prefix: string): Promise<string[]> {
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: this.bucket,
+        Prefix: prefix,
+      });
+
+      const response = await this.client.send(command);
+      if (!response.Contents) {
+        return [];
+      }
+
+      return response.Contents.map((item) => item.Key ?? '').filter(
+        (key) => Boolean(key) && !key.endsWith('/'),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to list files with prefix "${prefix}" from S3`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw new InternalServerErrorException(
+        `Failed to retrieve files from S3: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
    * Construct the public URL for a given object key.
    * Only use this when building API responses — never store the URL in the DB.
    */
   generatePublicUrl(key: string): string {
-    return `${this.baseUrl}/${key}`;
+    const cleanKey = key.replace(/^\/+/, '');
+    return `${this.baseUrl}/${cleanKey}`;
   }
 
   generateDownloadUrl(key: string, expiresInSeconds = 600): Promise<string> {
@@ -219,40 +250,37 @@ export class AwsS3Service implements IStorageService {
    *
    * Examples:
    *   https://bucket.s3.amazonaws.com/products/uuid/img.jpg → products/uuid/img.jpg
-   *   products/uuid/img.jpg → products/uuid/img.jpg
+   *   https://bucket.s3.amazonaws.com/assets/Profile-img/Profile-1.jpg → assets/Profile-img/Profile-1.jpg
+   *   assets/Profile-img/Profile-1.jpg → assets/Profile-img/Profile-1.jpg
    */
   extractObjectKey(urlOrKey: string): string {
     if (!urlOrKey) return urlOrKey;
 
-    // Already a relative key — return as-is
+    // Already a relative key — strip leading slashes
     if (!urlOrKey.startsWith('http://') && !urlOrKey.startsWith('https://')) {
-      return urlOrKey;
+      return urlOrKey.replace(/^\/+/, '');
     }
 
     // Strip the base URL prefix if it matches our bucket
     if (urlOrKey.startsWith(this.baseUrl)) {
-      return urlOrKey.slice(this.baseUrl.length).replace(/^\//, '');
+      return urlOrKey.slice(this.baseUrl.length).replace(/^\/+/, '');
     }
 
     // For full URLs from other origins, attempt to extract the path portion
     try {
       const url = new URL(urlOrKey);
-      return url.pathname.replace(/^\//, '');
+      return url.pathname.replace(/^\/+/, '');
     } catch {
       return urlOrKey;
     }
   }
 
   /**
-   * Return true when the value is a managed S3 object key (starts with products/).
+   * Return true when the value is a managed S3 object key (not a full URL).
    */
   isObjectKey(value: string): boolean {
     if (!value) return false;
-    return (
-      !value.startsWith('http://') &&
-      !value.startsWith('https://') &&
-      value.startsWith('products/')
-    );
+    return !value.startsWith('http://') && !value.startsWith('https://');
   }
 
   // ─────────────────────────────────────────────

@@ -32,6 +32,11 @@ export interface IStorageService {
   fileExists(key: string): Promise<boolean>;
 
   /**
+   * List object keys matching a prefix.
+   */
+  listFiles(prefix: string): Promise<string[]>;
+
+  /**
    * Convert a stored object key into a fully-qualified public URL.
    * e.g. products/uuid/image.jpg → https://bucket.s3.region.amazonaws.com/products/uuid/image.jpg
    */
