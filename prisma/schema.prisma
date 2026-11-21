@@ -43,6 +43,7 @@ model User {
   whatsAppMessageLogs WhatsAppMessageLog[]
   profile        UserProfile?
   wishlists      Wishlist[]
+  cart           Cart?
 
    userReviews       UserReview[]
 
@@ -141,6 +142,7 @@ model Product {
   inventories       Inventory[]
   keywords          ProductKeyword[]
   orderItems        OrderItem[]
+  cartItems         CartItem[]
 
  userReviews       UserReview[]
  wishlists         Wishlist[]
@@ -149,6 +151,33 @@ model Product {
   @@index([statusId])
   @@index([createdAt])
   @@map("products")
+}
+
+model Cart {
+  id             String     @id @default(uuid())
+  userId         String?    @unique @map("user_id")
+  guestTokenHash String?    @unique @map("guest_token_hash")
+  expiresAt      DateTime?  @map("expires_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  user           User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items          CartItem[]
+
+  @@index([expiresAt])
+  @@map("carts")
+}
+
+model CartItem {
+  cartId    String   @map("cart_id")
+  productId String   @map("product_id")
+  quantity  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([cartId, productId])
+  @@index([productId])
+  @@map("cart_items")
 }
 
 model ProductCategory {

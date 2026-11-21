@@ -19,6 +19,7 @@ import { UserReviewModule } from './modules/user-review/user-review.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { CartModule } from './modules/cart/cart.module';
 
 import configuration from './configuration';
 import { validationSchema } from './common/constants';
@@ -57,6 +58,7 @@ import { validationSchema } from './common/constants';
     WhatsAppModule,
     WishlistModule,
     PaymentModule,
+    CartModule,
     HealthModule,
   ],
   controllers: [],
