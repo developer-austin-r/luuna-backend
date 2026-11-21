@@ -34,6 +34,7 @@ import { BarcodeService } from './barcode.service';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
+  CategoryProductQueryDto,
   CreateProductDto,
   CreateProductImageDto,
   CreateProductKeywordDto,
@@ -138,7 +139,7 @@ export class ProductController {
   @ApiOperation({
     summary: 'Get products for the landing page Accessories section',
     description:
-      'Returns up to six active, non-deleted catalog products ordered by creation date, oldest first.',
+      'Returns up to six active, non-deleted products in the Keychain category, oldest first by creation date. Returns an empty list when no products qualify.',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -159,6 +160,24 @@ export class ProductController {
   })
   async getCategories() {
     return this.productService.getCategories();
+  }
+
+  @Get('categories/:slug/products')
+  @ApiOperation({ summary: 'List active storefront products for a category' })
+  @ApiParam({ name: 'slug', example: 'marvel' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Category and paginated products.',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Category not found.',
+  })
+  getCategoryProducts(
+    @Param('slug') slug: string,
+    @Query() query: CategoryProductQueryDto,
+  ) {
+    return this.productService.findByCategorySlug(slug, query);
   }
 
   @Get('lookup')

@@ -104,9 +104,10 @@ The API runs at:
 - Swagger docs: `http://localhost:3000/api/docs`
 
 Under **Products** in Swagger, `GET /products/accessories` serves the landing
-page Accessories carousel. It returns up to six active, non-deleted catalog
+page Accessories carousel. It returns up to six active, non-deleted Keychain
 products, oldest first by creation date, with their name, short description,
-prices, and primary image URL when available.
+prices, and primary image URL when available. The landing page hides the
+carousel when the API returns an empty list.
 - Health check: `http://localhost:3000/health`
 
 ## Docker Setup

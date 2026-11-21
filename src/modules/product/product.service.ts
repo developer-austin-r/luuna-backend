@@ -10,6 +10,7 @@ import { BarcodeService } from './barcode.service';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
+  CategoryProductQueryDto,
   CreateProductDto,
   CreateProductImageDto,
   CreateProductKeywordDto,
@@ -106,12 +107,28 @@ export class ProductService {
   }
 
   findAccessories() {
-    return this.findLandingProducts('asc');
+    return this.findLandingProducts('asc', {
+      productCategories: {
+        some: {
+          category: {
+            slug: {
+              in: ['keychain', 'keychains', 'key-chain', 'key-chains'],
+              mode: 'insensitive',
+            },
+            status: true,
+            isDeleted: false,
+          },
+        },
+      },
+    });
   }
 
-  private async findLandingProducts(sortOrder: Prisma.SortOrder) {
+  private async findLandingProducts(
+    sortOrder: Prisma.SortOrder,
+    filter?: Prisma.ProductWhereInput,
+  ) {
     const products = await this.prisma.product.findMany({
-      where: { deletedAt: null, status: { slug: 'active' } },
+      where: { ...filter, deletedAt: null, status: { slug: 'active' } },
       orderBy: [{ createdAt: sortOrder }, { id: sortOrder }],
       take: 6,
       select: {
@@ -298,7 +315,7 @@ export class ProductService {
   /**
    * Get paginated list of products with filters, search, and sorting.
    */
-  async findAll(query: ProductQueryDto) {
+  async findAll(query: ProductQueryDto, storefront = false) {
     const {
       page = 1,
       limit = 25,
@@ -318,6 +335,7 @@ export class ProductService {
     const skip = (pageNum - 1) * limitNum;
 
     const where: Prisma.ProductWhereInput = {
+      ...(storefront ? { status: { slug: 'active' } } : {}),
       ...(includeDeleted ? {} : { deletedAt: null }),
       ...(statusId ? { statusId } : {}),
       ...(brandId ? { brandId } : {}),
@@ -355,7 +373,9 @@ export class ProductService {
         where,
         skip,
         take: limitNum,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: storefront
+          ? [{ [sortBy]: sortOrder }, { id: sortOrder }]
+          : { [sortBy]: sortOrder },
         include: {
           brand: true,
           status: true,
@@ -1536,6 +1556,35 @@ export class ProductService {
         brand: true,
       },
     });
+  }
+
+  async findByCategorySlug(slug: string, query: CategoryProductQueryDto) {
+    const category = await this.prisma.category.findFirst({
+      where: { slug, isDeleted: false, status: true },
+      select: { id: true, name: true, slug: true, image: true },
+    });
+    if (!category) throw new NotFoundException('Category not found');
+
+    const { data, meta } = await this.findAll(
+      { ...query, categoryId: category.id, limit: 16 },
+      true,
+    );
+
+    return {
+      category: { ...category, image: this.resolveUrl(category.image) },
+      products: data.map(({ id, name, basePrice, finalPrice, images }) => ({
+        id,
+        name,
+        basePrice: basePrice.toString(),
+        finalPrice: finalPrice.toString(),
+        images: images.map(({ displayUrl, imageUrl, originalUrl }) => ({
+          displayUrl,
+          imageUrl,
+          originalUrl,
+        })),
+      })),
+      meta,
+    };
   }
 
   async getCategories() {
