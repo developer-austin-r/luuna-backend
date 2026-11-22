@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BarcodeService } from './barcode.service';
+import { NEW_ARRIVALS_LIMIT } from './product.constants';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
@@ -103,7 +104,7 @@ export class ProductService {
   }
 
   findNewArrivals() {
-    return this.findLandingProducts('desc');
+    return this.findLandingProducts('desc', undefined, NEW_ARRIVALS_LIMIT);
   }
 
   findAccessories() {
