@@ -31,6 +31,7 @@ import {
 import type { Request, Response } from 'express';
 import { ProductService } from './product.service';
 import { BarcodeService } from './barcode.service';
+import { NEW_ARRIVALS_LIMIT } from './product.constants';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
@@ -53,7 +54,9 @@ type UploadedImage = {
   originalname?: string;
 };
 
-const landingProductsSchema: ApiResponseSchemaHost['schema'] = {
+const landingProductsSchema = (
+  maxItems = 6,
+): ApiResponseSchemaHost['schema'] => ({
   type: 'object',
   required: ['statusCode', 'timestamp', 'path', 'data'],
   properties: {
@@ -62,7 +65,7 @@ const landingProductsSchema: ApiResponseSchemaHost['schema'] = {
     path: { type: 'string' },
     data: {
       type: 'array',
-      maxItems: 6,
+      maxItems,
       items: {
         type: 'object',
         required: [
@@ -86,7 +89,7 @@ const landingProductsSchema: ApiResponseSchemaHost['schema'] = {
       },
     },
   },
-};
+});
 
 @ApiTags('Products')
 @Controller('products')
@@ -123,13 +126,12 @@ export class ProductController {
   @Get('new-arrivals')
   @ApiOperation({
     summary: 'Get products for the landing page New Arrivals section',
-    description:
-      'Returns up to six active, non-deleted products ordered by creation date, newest first.',
+    description: `Returns up to ${NEW_ARRIVALS_LIMIT} active, non-deleted products ordered by creation date, newest first.`,
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'New arrivals fetched successfully.',
-    schema: landingProductsSchema,
+    schema: landingProductsSchema(NEW_ARRIVALS_LIMIT),
   })
   getNewArrivals() {
     return this.productService.findNewArrivals();
@@ -144,7 +146,7 @@ export class ProductController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Accessories section products fetched successfully.',
-    schema: landingProductsSchema,
+    schema: landingProductsSchema(),
   })
   getAccessories() {
     return this.productService.findAccessories();
@@ -334,6 +336,22 @@ export class ProductController {
   @ApiOperation({ summary: 'Resolve a product slug to its ID' })
   findIdBySlug(@Param('slug') slug: string) {
     return this.productService.findIdBySlug(slug);
+  }
+
+  @Get(':id/related')
+  @ApiOperation({
+    summary: 'Get related products for a product based on its category',
+    description:
+      'Returns up to six active, non-deleted products in the same categories, excluding the current product.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Related products fetched successfully.',
+    schema: landingProductsSchema(),
+  })
+  getRelatedProducts(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productService.findRelatedProducts(id);
   }
 
   @Get(':id')

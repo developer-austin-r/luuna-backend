@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BarcodeService } from './barcode.service';
+import { NEW_ARRIVALS_LIMIT } from './product.constants';
 import {
   AssignBrandDto,
   AssignCategoriesDto,
@@ -103,7 +104,7 @@ export class ProductService {
   }
 
   findNewArrivals() {
-    return this.findLandingProducts('desc');
+    return this.findLandingProducts('desc', undefined, NEW_ARRIVALS_LIMIT);
   }
 
   findAccessories() {
@@ -123,14 +124,67 @@ export class ProductService {
     });
   }
 
+  async findRelatedProducts(id: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        productCategories: {
+          select: {
+            categoryId: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product with ID "${id}" not found`);
+    }
+
+    const categoryIds = product.productCategories
+      .map((pc) => pc.categoryId)
+      .filter((catId): catId is string => Boolean(catId));
+
+    let related: Awaited<ReturnType<typeof this.findLandingProducts>> = [];
+
+    if (categoryIds.length > 0) {
+      related = await this.findLandingProducts('desc', {
+        id: { not: id },
+        productCategories: {
+          some: {
+            categoryId: { in: categoryIds },
+            category: {
+              status: true,
+              isDeleted: false,
+            },
+          },
+        },
+      });
+    }
+
+    // Backfill with other active products if fewer than 6
+    if (related.length < 6) {
+      const excludeIds = [id, ...related.map((p) => p.id)];
+      const backfill = await this.findLandingProducts(
+        'desc',
+        { id: { notIn: excludeIds } },
+        6 - related.length,
+      );
+      related = [...related, ...backfill];
+    }
+
+    return related;
+  }
+
   private async findLandingProducts(
     sortOrder: Prisma.SortOrder,
     filter?: Prisma.ProductWhereInput,
+    take = 6,
   ) {
     const products = await this.prisma.product.findMany({
       where: { ...filter, deletedAt: null, status: { slug: 'active' } },
       orderBy: [{ createdAt: sortOrder }, { id: sortOrder }],
-      take: 6,
+      take,
       select: {
         id: true,
         name: true,
